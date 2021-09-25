@@ -133,17 +133,6 @@ class AQGGenerationDataLoader:
         sample_index = 0  # sequence index within each batch
 
         for d in datas:
-            # 4216, 4301, 4456, 4549, 4564, 4770, 4809, 4822, 4871
-            # if d["id"] not in [4013, 4027, 4045, 4061, 4083, 4087, 4107, 4110, 4112, 4116, 4118,
-            #                    4130, 4134, 4140, 4142, 4150, 4151, 4154, 4157, 4164, 4169, 4178, 4185, 4197, 4202, 4204, 4210,
-            #                    4211, 4223, 4226, 4230, 4243, 4255, 4256, 4269, 4283, 4284, 4321, 4323]:
-            #     continue
-            # if d["id"] not in ["WebQTest-9", "WebQTest-26", "WebQTest-41", "WebQTest-51", "WebQTest-58", "WebQTest-74", "WebQTest-90",
-            #                    "WebQTest-95", "WebQTest-110"]:
-            #     continue
-            # if d["id"] != "WebQTest-576_01e2da60a2779c4ae4b5d1547499a4f8":
-            #     continue
-
             if sample_index % bs == 0:
                 sample_index = 0
                 batch_index += 1
