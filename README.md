@@ -36,6 +36,8 @@ We apply three KGQA benchmarks to evaluate our approach, ComplexWebQuestions ([T
 
 * Download GloVe Embedding [glove.42B.300d.txt](http://nlp.stanford.edu/data/glove.42B.300d.zip) and put it to `your_glove_path`.
 
+* Download our vocabulary from [here](https://drive.google.com/file/d/1vKqs6r96KTk34-9xz8QS_Dz56OCRNV-U/view?usp=sharing). Unzip and put it under `./`. It contains our used SPARQL cache for Execution-Guided strategy.
+
 ### Running Code
 
 #### 1. Training for HGNet
@@ -57,7 +59,7 @@ Execute the following command for training model on WebQSP.
 sh train_wsp.sh
 ```
 The trained model file is saved under `./runs` directory.  
-The path format of the trained model is `./runs/RUN_ID/checkpoints/best_snapshot_epoch_xx_best_val_acc_xx_model.pt`
+The path format of the trained model is `./runs/RUN_ID/checkpoints/best_snapshot_epoch_xx_best_val_acc_xx_model.pt`.
 
 
 #### 2. Testing for HGNet
@@ -66,6 +68,7 @@ Before testing, need to train a model first and set the following hyperparameter
 --cpt your_trained_model_path
 --kb_endpoint your_sparql_service_ip
 ```
+You can also directly download our trained models from [here](https://drive.google.com/file/d/11IVPgKtVyRcA9Xprb6M_jkqUDDTALwVj/view?usp=sharing). Unzip and put it under `./`.
 
 Execute the following command for testing the model on ComplexWebQuestions.
 ```bash
