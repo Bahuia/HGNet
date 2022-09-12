@@ -1,12 +1,14 @@
 #!/bin/bash
 
-devices=0
+devices=3
 
-CUDA_LAUNCH_BLOCKING=1 python -u eval.py \
+CUDA_LAUNCH_BLOCKING=1 python -u main_eval.py \
 --dataset wsp \
 --seed 2021 \
 --test_data ./data/WebQSP/annotated_test.pkl \
 --wo_vocab ./vocab/word_vocab_wsp.pkl \
+--not_kb_constraint \
+--not_save_result \
 --not_segment_embedding \
 --not_matching_feature \
 --context_mode attention \
@@ -19,7 +21,6 @@ CUDA_LAUNCH_BLOCKING=1 python -u eval.py \
 --heads 4 \
 --beam_size 7 \
 --max_num_op 45 \
---sparql_cache_path ./vocab/sparql_cache_wsp.pkl \
---cpt ./runs/wsp/1624885955/checkpoints/best_snapshot_epoch_44_val_aqg_acc_80.1621958827199_val_acc_57.330006238303184_model.pt \
---result_name result_44.pkl \
---kb_endpoint http://10.201.7.66:8890//sparql
+--cpt ./runs/wsp/1652622095/checkpoints/best_snapshot_epoch_67_val_aqg_acc_79.47598253275109_val_acc_57.01809107922645_model.pt \
+--result_name result.pkl \
+--kb_endpoint http://10.201.102.90:8890//sparql

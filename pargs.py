@@ -21,7 +21,8 @@ def aqgnet_pargs():
     parser.add_argument('--seed', type=int, default=0)
 
     parser.add_argument('--n_epochs', type=int, default=30)
-    parser.add_argument('--lr', type=float, default=5e-5)
+    parser.add_argument('--lr', type=float, default=2e-4)
+    parser.add_argument('--lr_plm', type=float, default=2e-5)
     parser.add_argument("--ag", type=int, default=1, help="accumulate gradients for training")
     parser.add_argument('--bs', type=int, default=16)
     parser.add_argument('--clip_grad', type=float, default=0.6, help='gradient clipping')
@@ -42,8 +43,7 @@ def aqgnet_pargs():
     parser.add_argument('--readout', default='identity', choices=['identity', 'non_linear'])
     parser.add_argument('--att_type', default='affine', choices=['dot_prod', 'affine'])
     parser.add_argument('--use_gold_aqg', action='store_true', help='use the gold aqg to predict vertex and edge')
-    parser.add_argument('--use_bert', action='store_true', help='use bert model for encoding')
-    parser.add_argument('--bert_mode', type=str, default='bert-base-uncased', choices=['bert-base-uncased', 'bert-large-uncased'])
+    parser.add_argument('--plm_mode', type=str, default='none', choices=['bert-base-uncased', 'roberta-base-uncased', 'none'])
     parser.add_argument('--context_mode', type=str, default='attention', choices=['attention', 'pooling'])
     parser.add_argument('--not_graph_encoder', action='store_false', help='do not use graph encoder when generate aqg',
                         dest='use_graph_encoder')
@@ -56,6 +56,8 @@ def aqgnet_pargs():
                         dest='use_mention_feature')
     parser.add_argument('--not_kb_constraint', action='store_false', help='do not use KB constraint for predict edges',
                         dest='use_kb_constraint')
+    parser.add_argument('--not_subgraph', action='store_false', help='do not use KB constraint for predict edges',
+                        dest='use_subgraph')
     parser.add_argument('--not_copy_v', action='store_false', help='do not use copy mechanism for vertex',
                         dest='use_v_copy')
     parser.add_argument('--not_copy_e', action='store_false', help='do not use copy mechanism for edge',
@@ -73,6 +75,9 @@ def aqgnet_pargs():
     parser.add_argument('--not_edge_auxiliary_encoding', action='store_false',
                         help='do not use final vertex encoding vector of the aqg for predict the edge instance',
                         dest='use_edge_auxiliary_encoding')
+    parser.add_argument('--not_instance_auxiliary_encoding', action='store_false',
+                        help='do not use final vertex encoding vector of the aqg for predict the edge instance',
+                        dest='use_instance_auxiliary_encoding')
     parser.add_argument('--not_mask_aqg_prob', action='store_false',
                         help='do not mask action probability of av and ae',
                         dest='mask_aqg_prob')
@@ -80,7 +85,10 @@ def aqgnet_pargs():
 
 
     parser.add_argument("--max_num_op", default=20, type=int, help='maximum number of time steps used in decoding')
+    parser.add_argument("--start_valid_epoch", default=30, type=int)
 
+    parser.add_argument('--not_save_result', action='store_false', dest='save_result')
+    parser.add_argument('--not_save_cpt', action='store_false', dest='save_cpt')
     parser.add_argument('--save_all_cpt', action='store_true', help='save all the checkpoints', dest='save_all_cpt')
     parser.add_argument('--toy_size', action='store_true', help='use small data', dest='use_small')
     parser.add_argument('--not_shuffle', action='store_false', help='do not shuffle training data', dest='shuffle')

@@ -2,11 +2,13 @@
 
 devices=1
 
-CUDA_LAUNCH_BLOCKING=1 python -u eval.py \
+CUDA_LAUNCH_BLOCKING=1 python -u main_eval_plm.py \
 --dataset cwq \
 --seed 2021 \
 --test_data ./data/ComplexWebQuestions/annotated_test.pkl \
---wo_vocab ./vocab/word_vocab_cwq.pkl \
+--plm_mode bert-base-uncased \
+--not_copy_v \
+--not_copy_e \
 --context_mode attention \
 --not_matching_score \
 --not_mention_feature \
@@ -21,6 +23,6 @@ CUDA_LAUNCH_BLOCKING=1 python -u eval.py \
 --beam_size 5 \
 --max_num_op 45 \
 --sparql_cache_path ./vocab/sparql_cache_cwq.pkl \
---cpt ./runs/cwq/1625122556/checkpoints/best_snapshot_epoch_30_val_aqg_acc_73.54542848953855_val_acc_47.72141014617369_model.pt \
---result_name result_30.pkl \
---kb_endpoint http://10.201.69.194:8890//sparql
+--cpt ./runs/cwq/1653210400/checkpoints/best_snapshot_epoch_20_val_aqg_acc_84.72341645170536_val_acc_54.77214101461737_model.pt \
+--result_name result_plm.pkl \
+--kb_endpoint http://10.201.102.90:8890//sparql

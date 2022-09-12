@@ -240,23 +240,52 @@ class MultiHeadAttention(nn.Module):
         self.dropout = nn.Dropout(dropout_p)
 
     def forward(self, query, keys, mask=None):
+        """
+
+        @param query:   (n, 1, d_h)
+        @param keys:    (n, n, d_h)
+        @param mask:    (n, n)
+        @return:
+        """
+
+        # Q:    (n, 1, d_h)
+        # K:    (n, n, d_h)
+        # V:    (n, n, d_h)
         Q = self.query_layer(query)
         K = self.key_layer(keys)
         V = self.value_layer(keys)
+
+        # print(Q.size())
+        # print(K.size())
+        # print(V.size())
+        # print()
 
         l = Q.size(0)
 
         # split each Q, K and V into h different values from dim 2
         # and then merge them back together in dim 0
         chunk_size = int(self._num_units / self._h)
+        # Q:    (n * _h, 1, d_h // _h)
+        # K:    (n * _h, n, d_h // _h)
+        # V:    (n * _h, n, d_h // _h)
         Q = torch.cat(Q.split(split_size=chunk_size, dim=2), dim=0)
         K = torch.cat(K.split(split_size=chunk_size, dim=2), dim=0)
         V = torch.cat(V.split(split_size=chunk_size, dim=2), dim=0)
 
+        # print(Q.size())
+        # print(K.transpose(1, 2).size())
+        # print(V.size())
+        # print()
+
         # calculate QK^T
         attention = torch.matmul(Q, K.transpose(1, 2))
         # normalize with sqrt(dk)
+        # attention:    (n * _h, 1, n)
         attention = attention / torch.sqrt(self._key_dim).cuda()
+
+        # print(attention.size())
+        # print()
+
 
         if mask is not None:
           mask = mask.repeat(self._h,1,1)
@@ -267,6 +296,9 @@ class MultiHeadAttention(nn.Module):
         attention = self.dropout(attention)
         # multiplyt it with V
         attention = torch.matmul(attention, V)
+        # print(attention.size())
+        # print("---------------------------")
+
         # convert attention back to its input original size
         restore_chunk_size = int(attention.size(0) / self._h)
         attention = torch.cat(

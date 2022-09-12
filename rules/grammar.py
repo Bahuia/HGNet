@@ -473,6 +473,136 @@ class AbstractQueryGraph(HeterogeneousGraph):
                 continue
         return structure_flag, False
 
+    def is_structure_equal(self, another_aqg):
+        """
+        check whether two aqg are identical
+        """
+        assert type(another_aqg) == AbstractQueryGraph
+
+        if len(self.vertices) != len(another_aqg.vertices):
+            return False
+
+        # if len(self.edges) != len(another_aqg.edges):
+        #     return False, False
+
+        # check labels of vertices
+        v_labels1 = [self.v_labels[x] for x in self.vertices]
+        v_labels2 = [another_aqg.v_labels[x] for x in another_aqg.vertices]
+        v_labels1 = " ".join([str(x) for x in sorted(v_labels1)])
+        v_labels2 = " ".join([str(x) for x in sorted(v_labels2)])
+        if v_labels1 != v_labels2:
+            return False
+
+        # # check labels of edges
+        # e_labels1 = [self.e_labels[x] for x in self.edges]
+        # e_labels2 = [another_aqg.e_labels[x] for x in another_aqg.edges]
+        # e_labels1 = " ".join([str(x) for x in sorted(e_labels1)])
+        # e_labels2 = " ".join([str(x) for x in sorted(e_labels2)])
+        # if e_labels1 != e_labels2:
+        #     return False, False
+
+        # check index of subgraph
+        v_segments1 = [self.v_segments[x] for x in self.vertices]
+        v_segments2 = [another_aqg.v_segments[x] for x in another_aqg.vertices]
+        v_segments1 = " ".join([str(x) for x in sorted(v_segments1)])
+        v_segments2 = " ".join([str(x) for x in sorted(v_segments2)])
+        if v_segments1 != v_segments2:
+            return False
+
+        triples1 = [[self.v_labels[t[0]], self.v_labels[t[1]], self.e_labels[t[2]]] for t in self.triples]
+        triples2 = [[another_aqg.v_labels[t[0]], another_aqg.v_labels[t[1]], another_aqg.e_labels[t[2]]] for t in
+                    another_aqg.triples]
+        triples1 = ";".join(sorted([" ".join([str(x) for x in t]) for t in triples1]))
+        triples2 = ";".join(sorted([" ".join([str(x) for x in t]) for t in triples2]))
+        if triples1 != triples2:
+            return False
+
+        if self.vertex_number >= 8:
+            return True
+
+        vertices1 = [v for v in self.vertices]
+        vertex_idx1 = {v: i for i, v in enumerate(vertices1)}
+        vertex_labels1 = [self.v_labels[v] for v in self.vertices]
+        vertex_segments_labels1 = [self.v_segments[x] for x in self.vertices]
+        adj1 = np.full((len(vertices1), len(vertices1)), -1)
+        for v1, v2, e in self.triples:
+            adj1[vertex_idx1[v1]][vertex_idx1[v2]] = e
+        adj_e_idx_flat1 = []
+        adj_e_label_flat1 = []
+        e_idx1 = dict()
+        for e in adj1.flatten():
+            if e == -1:
+                adj_e_idx_flat1.append(str(-1))
+                adj_e_label_flat1.append(str(-1))
+            else:
+                if e not in e_idx1:
+                    e_idx1[e] = len(e_idx1)
+                adj_e_idx_flat1.append(str(e_idx1[e]))
+                adj_e_label_flat1.append(str(self.e_labels[e]))
+        adj_e_idx_flat1 = " ".join(adj_e_idx_flat1)
+        adj_e_label_flat1 = " ".join(adj_e_label_flat1)
+
+        vertices2 = [v for v in another_aqg.vertices]
+
+        structure_flag = False
+
+        # Enumerate Vertex Permutations
+        for perm in itertools.permutations([i for i in range(len(vertices2))], len(vertices2)):
+            vertex_idx2 = {v: perm[i] for i, v in enumerate(vertices2)}
+            vertex_labels2 = [0 for _ in range(len(vertices2))]
+            vertex_segments_labels2 = [0 for _ in range(len(vertices2))]
+            for v in vertices2:
+                vertex_labels2[vertex_idx2[v]] = another_aqg.v_labels[v]
+                vertex_segments_labels2[vertex_idx2[v]] = another_aqg.v_segments[v]
+
+            # print(vertex_idx2)
+            # print(vertex_labels1)
+            # print(vertex_labels2)
+            # print(vertex_segments_labels1)
+            # print(vertex_segments_labels2)
+            # print(vertex_instances_labels1)
+            # print(vertex_instances_labels2)
+            # print()
+
+            # check class of vertex
+            if " ".join([str(x) for x in vertex_labels1]) != " ".join([str(x) for x in vertex_labels2]):
+                continue
+
+            # check subquery of vertex
+            if " ".join([str(x) for x in vertex_segments_labels1]) != " ".join([str(x) for x in vertex_segments_labels2]):
+                continue
+
+            adj2 = np.full((len(vertices2), len(vertices2)), -1)
+            for v1, v2, e in another_aqg.triples:
+                adj2[vertex_idx2[v1]][vertex_idx2[v2]] = e
+            adj_e_idx_flat2 = []
+            adj_e_label_flat2 = []
+            e_idx2 = dict()
+            for e in adj2.flatten():
+                if e == -1:
+                    adj_e_idx_flat2.append(str(-1))
+                    adj_e_label_flat2.append(str(-1))
+                else:
+                    if e not in e_idx2:
+                        e_idx2[e] = len(e_idx2)
+                    adj_e_idx_flat2.append(str(e_idx2[e]))
+                    adj_e_label_flat2.append(str(another_aqg.e_labels[e]))
+            adj_e_idx_flat2 = " ".join([str(x) for x in adj_e_idx_flat2])
+            adj_e_label_flat2 = " ".join([str(x) for x in adj_e_label_flat2])
+
+            # print(adj_e_label_flat1 == adj_e_label_flat2)
+            # print(adj1)
+            # print(adj2)
+            # print(adj_e_idx_flat1 == adj_e_idx_flat2)
+            # print(adj_e_instance_flat1)
+            # print(adj_e_instance_flat2)
+            # print()
+
+            if adj_e_label_flat1 == adj_e_label_flat2:
+                structure_flag = True
+                continue
+        return structure_flag
+
     def to_temporary_structure(self):
         _aqg = copy.deepcopy(self)
 
@@ -647,7 +777,7 @@ class AbstractQueryGraph(HeterogeneousGraph):
             else:
                 prefix_str = ""
                 # from_str = "FROM <http://dbpedia.org/>\n"
-                from_str = ""
+                from_str = "FROM <dbpedia>\n"
 
             if select_relation:
                 seg_sels_str = " ".join(list(set(seg_sels)))
@@ -674,6 +804,149 @@ class AbstractQueryGraph(HeterogeneousGraph):
                 new_seg_filters = expand_variable_in_filter(new_seg_conds)
 
                 select_str_1 = " ".join(new_seg_sels) + "\n"
+                where_str_1 = "\n".join([" ".join([x for x in one_cond]) + " ." for one_cond in new_seg_conds]) + "\n" \
+                            + "\n".join(new_seg_filters)
+                sparql_query_1 = prefix_str + \
+                                 "ASK\n" + \
+                                 from_str + \
+                                 "WHERE {\n" + where_str_1 + "}"
+                queries.append(sparql_query_1)
+        return queries
+
+    def to_ask_sparql_query_for_eg(self, kb, qid):
+
+        v_rename_mapping = dict()
+        for v in self.vertices:
+            if self.v_labels[v] == V_CLASS_IDS["ans"]:
+                v_rename_mapping[v] = "?x" + "_" + str(self.v_segments[v])
+            elif self.v_labels[v] == V_CLASS_IDS["var"]:
+                v_rename_mapping[v] = "?v" + "_" + str(v) + "_" + str(self.v_segments[v])
+            else:
+                assert v in self.v_instances
+                v_rename_mapping[v] = self.v_instances[v][-1]
+
+        e_rename_mapping = dict()
+        for e in self.edges:
+            if e in self.e_instances:
+                e_rename_mapping[e] = self.e_instances[e][-1]
+            else:
+                e_rename_mapping[e] = "?e" + "_" + str(e) + "_" + str(self.e_segments[e])
+
+        queries = []
+
+        n_segment = len(set(self.v_segments.values()))
+        for seg in range(n_segment - 1, -1, -1):
+            seg_sels = []
+            seg_conds = []
+            period_vars = []
+
+            # get conditions, filters and orders
+            for i, triple in enumerate(self.triples):
+                if i % 2 == 1: continue
+                s, o, p = triple
+                if seg > 0 and (self.v_segments[s] != seg or self.v_segments[o] != seg):
+                    continue
+
+                if seg == 0 and (self.v_segments[s] != seg and self.v_segments[o] != seg):
+                    continue
+
+                # Only judge the conditions triples
+                if self.e_labels[p] == E_CLASS_IDS["rel+"]:
+                    if p in self.e_instances and "$$$" in self.e_instances[p][-1]:
+                        p_from = self.e_instances[p][-1].split("$$$")[0]
+                        p_to = ".".join(p_from.split(".")[:-1]) + "." + self.e_instances[p][-1].split("$$$")[-1]
+
+                        flag = True
+                        for j, (ss, oo, pp) in enumerate(self.triples):
+                            if j == i: continue
+                            if v_rename_mapping[o] == v_rename_mapping[oo] or v_rename_mapping[o] == v_rename_mapping[ss]:
+                                flag = False
+                                break
+                        # can not split "from$$$to" or "start_date$$$end_date"
+                        # so, the "from$$$to" or "start_date$$$end_date" should not be taken as the edge instance
+                        if not flag or "?x" in v_rename_mapping[o]:
+                            return []
+                        seg_conds.append([v_rename_mapping[s], p_from, v_rename_mapping[o] + "_from"])
+                        seg_conds.append([v_rename_mapping[s], p_to, v_rename_mapping[o] + "_to"])
+                    else:
+                        if kb == "dbpedia" and self.v_labels[o] == V_CLASS_IDS["type"]:
+                            seg_conds.append([v_rename_mapping[s],
+                                              "<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>",
+                                              v_rename_mapping[o]])
+                        else:
+                            seg_conds.append([v_rename_mapping[s], e_rename_mapping[p], v_rename_mapping[o]])
+
+                    if e_rename_mapping[p][0] == "?":
+                        if kb != "dbpedia" or self.v_labels[o] != V_CLASS_IDS["type"]:
+                            seg_sels.append(e_rename_mapping[p])
+
+                elif self.e_labels[p] == E_CLASS_IDS["rel-"]:
+                    if p in self.e_instances and "$$$" in self.e_instances[p][-1]:
+                        p_from = self.e_instances[p][-1].split("$$$")[0]
+                        p_to = ".".join(p_from.split(".")[:-1]) + "." + self.e_instances[p][-1].split("$$$")[-1]
+                        flag = True
+                        for j, (ss, oo, pp) in enumerate(self.triples):
+                            if j == i: continue
+                            if v_rename_mapping[s] == v_rename_mapping[oo] or v_rename_mapping[s] == v_rename_mapping[ss]:
+                                flag = False
+                                break
+                        # can not split "from$$$to" or "start_date$$$end_date"
+                        # so, the "from$$$to" or "start_date$$$end_date" should not be taken as the edge instance
+                        if not flag or "?x" in v_rename_mapping[s]:
+                            return []
+
+                        seg_conds.append([v_rename_mapping[o], p_from, v_rename_mapping[s] + "_from"])
+                        seg_conds.append([v_rename_mapping[o], p_to, v_rename_mapping[s] + "_to"])
+                    else:
+                        if kb == "dbpedia" and self.v_labels[s] == V_CLASS_IDS["type"]:
+                            seg_conds.append([v_rename_mapping[o],
+                                              "<http://www.w3.org/1999/02/22-rdf-syntax-ns#type>",
+                                              v_rename_mapping[s]])
+                        else:
+                            seg_conds.append([v_rename_mapping[o], e_rename_mapping[p], v_rename_mapping[s]])
+
+                    if e_rename_mapping[p][0] == "?":
+                        if kb != "dbpedia" or self.v_labels[s] != V_CLASS_IDS["type"]:
+                            seg_sels.append(e_rename_mapping[p])
+
+                elif self.e_labels[p] == E_CLASS_IDS["cmp+"] and "$$$" in v_rename_mapping[o]:
+                    period_vars.append(v_rename_mapping[s])
+
+                elif self.e_labels[p] == E_CLASS_IDS["cmp-"] and "$$$" in v_rename_mapping[s]:
+                    period_vars.append(v_rename_mapping[o])
+
+            saved_seg_conds = [x for x in seg_conds]
+            seg_filters = expand_variable_in_filter(seg_conds)
+
+            if kb == "freebase":
+                where_str = "\n".join([" ".join(["<" + x + ">" if x[0] != "?" else x for x in one_cond])
+                                       + " ." for one_cond in seg_conds]) + "\n" \
+                            + "\n".join(seg_filters)
+            else:
+                where_str = "\n".join([" ".join([x if x[0] != "?" else x for x in one_cond])
+                                       + " ." for one_cond in seg_conds]) + "\n" \
+                            + "\n".join(seg_filters)
+
+            prefix_str = ""
+            from_str = "FROM <" + qid + ">\n"
+
+            sparql_query = prefix_str + \
+                           "ASK\n" + \
+                           from_str + \
+                           "WHERE {\n" + where_str + "}"
+
+            queries.append(sparql_query)
+
+            if kb == "freebase" and period_vars:
+                new_seg_sels = []
+                new_seg_conds = []
+                for s, p, o in saved_seg_conds:
+                    if s not in period_vars and o not in period_vars:
+                        new_seg_conds.append([s, p, o])
+                        if p[0] == "?" and p not in new_seg_sels:
+                            new_seg_sels.append(p)
+                new_seg_filters = expand_variable_in_filter(new_seg_conds)
+
                 where_str_1 = "\n".join([" ".join([x for x in one_cond]) + " ." for one_cond in new_seg_conds]) + "\n" \
                             + "\n".join(new_seg_filters)
                 sparql_query_1 = prefix_str + \
@@ -873,7 +1146,7 @@ class AbstractQueryGraph(HeterogeneousGraph):
             where_str = "WHERE {\n" + "\n".join(where_list) + " " \
                                    + "\n".join(filter_list) + "\n}\n"
             if kb == "dbpedia":
-                from_str = "FROM <http://dbpedia.org/>\n"
+                from_str = "FROM <dbpedia>\n"
             else:
                 from_str = "\n"
 

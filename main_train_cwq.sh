@@ -2,7 +2,7 @@
 
 devices=3
 
-CUDA_LAUNCH_BLOCKING=1 python -u train.py \
+CUDA_LAUNCH_BLOCKING=1 python -u main_train.py \
 --dataset cwq \
 --seed 2021 \
 --train_data ./data/ComplexWebQuestions/annotated_train.pkl \
@@ -10,8 +10,7 @@ CUDA_LAUNCH_BLOCKING=1 python -u train.py \
 --glove_path /home/cyr/resources/GloVe/glove.42B.300d.txt \
 --wo_vocab ./vocab/word_vocab_cwq.pkl \
 --emb_cache ./vocab/word_embeddings_cache_cwq.pt \
---sparql_cache_path ./vocab/sparql_cache_cwq.pkl \
---save_all_cpt \
+--dropout 0.1 \
 --context_mode attention \
 --not_matching_score \
 --not_mention_feature \
@@ -23,10 +22,11 @@ CUDA_LAUNCH_BLOCKING=1 python -u train.py \
 --d_emb 300 \
 --d_f 32 \
 --gpu $devices \
+--start_valid_epoch 30 \
 --n_lstm_layers 1 \
 --n_gnn_blocks 3 \
 --heads 4 \
---n_epochs 45 \
+--n_epochs 100 \
 --bs 16 \
 --ag 1 \
 --lr 2e-4 \

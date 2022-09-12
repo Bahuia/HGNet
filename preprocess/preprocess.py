@@ -14,7 +14,8 @@ import json
 import copy
 import pickle
 import argparse
-import jsonlines
+import time
+# import jsonlines
 from transformers import BertTokenizer
 
 sys.path.append("..")
@@ -183,9 +184,12 @@ def parse_sparql_for_lcq(source_path, data_path, individual_relation_pool_path, 
             "query": query
         }
         processed_datas.append(new_data)
-    json.dump(processed_datas, open(data_path, "w", encoding="utf-8"), indent=2)
+    # json.dump(processed_datas, open(data_path, "w", encoding="utf-8"), indent=2)
 
-    # build_individual_relation_pool_for_lcq(source_datas, individual_relation_pool_path, kb_endpoint)
+    st_time = time.time()
+    build_individual_relation_pool_for_lcq(source_datas, individual_relation_pool_path, kb_endpoint)
+    print(time.time() - st_time)
+    exit()
 
     if training:
         word_vocab = mk_vocabs_for_lcq(processed_datas, relation_pool)
@@ -208,15 +212,16 @@ def build_relation_pool_for_lcq(kb_endpoint):
 
 def build_individual_relation_pool_for_lcq(source_datas, output_path, kb_endpoint):
     queries = [
-        "SELECT DISTINCT ?r WHERE { #ent# ?r ?x .}",
-        "SELECT DISTINCT ?r WHERE { ?x ?r #ent# .}",
-        "SELECT DISTINCT ?r1 ?r2 WHERE { #ent# ?r1 ?x . ?x ?r2 ?y .}",
-        "SELECT DISTINCT ?r1 ?r2 WHERE { #ent# ?r1 ?x . ?y ?r2 ?x .}",
-        "SELECT DISTINCT ?r1 ?r2 WHERE { ?x ?r1 #ent# . ?y ?r2 ?x .}",
-        "SELECT DISTINCT ?r1 ?r2 WHERE { ?x ?r1 #ent# . ?x ?r2 ?y .}"
+        "SELECT DISTINCT ?r FROM <dbpedia> WHERE { #ent# ?r ?x .}",
+        "SELECT DISTINCT ?r FROM <dbpedia> WHERE { ?x ?r #ent# .}",
+        "SELECT DISTINCT ?r1 ?r2 FROM <dbpedia> WHERE { #ent# ?r1 ?x . ?x ?r2 ?y .}",
+        "SELECT DISTINCT ?r1 ?r2 FROM <dbpedia> WHERE { #ent# ?r1 ?x . ?y ?r2 ?x .}",
+        "SELECT DISTINCT ?r1 ?r2 FROM <dbpedia> WHERE { ?x ?r1 #ent# . ?y ?r2 ?x .}",
+        "SELECT DISTINCT ?r1 ?r2 FROM <dbpedia> WHERE { ?x ?r1 #ent# . ?x ?r2 ?y .}"
     ]
     relation_pool = []
     for data in source_datas:
+        print(data["id"])
         ents = []
         rels = []
         if data["entity1_uri"] != "":
@@ -237,16 +242,16 @@ def build_individual_relation_pool_for_lcq(source_datas, output_path, kb_endpoin
         rels.sort()
         relation_pool.append({"id": data["id"], "relation_pool": rels})
 
-    if not os.path.exists(output_path):
-        os.makedirs(output_path)
-
-    for i, d in enumerate(relation_pool):
-        if i % 100 == 0:
-            out_dir = os.path.join(output_path, str(i) + "-" + str(i + 99))
-            if not os.path.exists(out_dir):
-                os.makedirs(out_dir)
-        out_path = os.path.join(out_dir, str(d["id"]) + ".json")
-        json.dump(d, open(out_path, "w"), indent=4)
+    # if not os.path.exists(output_path):
+    #     os.makedirs(output_path)
+    #
+    # for i, d in enumerate(relation_pool):
+    #     if i % 100 == 0:
+    #         out_dir = os.path.join(output_path, str(i) + "-" + str(i + 99))
+    #         if not os.path.exists(out_dir):
+    #             os.makedirs(out_dir)
+    #     out_path = os.path.join(out_dir, str(d["id"]) + ".json")
+    #     json.dump(d, open(out_path, "w"), indent=4)
 
 def build_type_pool_for_lcq(in_path, out_path):
 
@@ -481,24 +486,24 @@ if __name__ == '__main__':
     elif args.dataset == "lcq":
         print("Now preprocessing LC-QuAD ... ")
 
-        kb_endpoint = "http://10.201.61.163:8890//sparql"
+        kb_endpoint = "http://10.201.102.90:8890//sparql"
 
 
-        rel_pool = build_relation_pool_for_lcq(kb_endpoint)
+        # rel_pool = build_relation_pool_for_lcq(kb_endpoint)
         rel_pool_path = "../data/LC-QuAD/relation_pool.json"
-        json.dump(rel_pool, open(rel_pool_path, "w", encoding="utf-8"), indent=2)
+        # json.dump(rel_pool, open(rel_pool_path, "w", encoding="utf-8"), indent=2)
         rel_pool = json.load(open(rel_pool_path))
 
-        parse_sparql_for_lcq("../data/LC-QuAD/LC-QuAD_train.json",
-                             "../data/LC-QuAD/parsed_train.json",
-                             "../data/LC-QuAD/individual_relation_pool_train",
-                             rel_pool,
-                             training=True)
-
-        parse_sparql_for_lcq("../data/LC-QuAD/LC-QuAD_dev.json",
-                             "../data/LC-QuAD/parsed_dev.json",
-                             "../data/LC-QuAD/individual_relation_pool_dev",
-                             rel_pool)
+        # parse_sparql_for_lcq("../data/LC-QuAD/LC-QuAD_train.json",
+        #                      "../data/LC-QuAD/parsed_train.json",
+        #                      "../data/LC-QuAD/individual_relation_pool_train",
+        #                      rel_pool,
+        #                      training=True)
+        #
+        # parse_sparql_for_lcq("../data/LC-QuAD/LC-QuAD_dev.json",
+        #                      "../data/LC-QuAD/parsed_dev.json",
+        #                      "../data/LC-QuAD/individual_relation_pool_dev",
+        #                      rel_pool)
 
         parse_sparql_for_lcq("../data/LC-QuAD/LC-QuAD_test.json",
                              "../data/LC-QuAD/parsed_test.json",

@@ -2,11 +2,14 @@
 
 devices=2
 
-CUDA_LAUNCH_BLOCKING=1 python -u eval.py \
+CUDA_LAUNCH_BLOCKING=1 python -u main_eval.py \
 --dataset lcq \
 --seed 2021 \
 --test_data ./data/LC-QuAD/annotated_test.pkl \
 --wo_vocab ./vocab/word_vocab_lcq.pkl \
+--not_kb_constraint \
+--not_save_result \
+--not_matching_score \
 --not_segment_embedding \
 --not_matching_feature \
 --context_mode attention \
@@ -19,9 +22,6 @@ CUDA_LAUNCH_BLOCKING=1 python -u eval.py \
 --heads 4 \
 --beam_size 7 \
 --max_num_op 20 \
---alpha 0.2 \
---beta 0 \
---sparql_cache_path ./vocab/sparql_cache_lcq.pkl \
---cpt ./runs/lcq/1625117153/checkpoints/best_snapshot_epoch_94_val_aqg_acc_80.6_val_acc_26.8_model.pt \
---result_name result_94_trick.pkl \
---kb_endpoint http://10.201.61.163:8890//sparql
+--cpt ./runs/lcq/1653312288/checkpoints/best_snapshot_epoch_80_val_aqg_acc_78.8_val_acc_32.2_model.pt \
+--result_name result.pkl \
+--kb_endpoint http://10.201.102.90:8890//sparql

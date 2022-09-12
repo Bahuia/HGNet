@@ -14,6 +14,7 @@ import copy
 import json
 import torch
 import pickle
+import time
 sys.path.append("..")
 sys.path.append("../..")
 import pargs
@@ -60,6 +61,7 @@ if __name__ == '__main__':
         model.cuda()
         print('Shift model to GPU.\n')
 
+    st_time = time.time()
     model.eval()
 
     test_recall = 0
@@ -87,15 +89,16 @@ if __name__ == '__main__':
         test_n_total += 1
 
     test_recall = test_recall * 100. / test_n_total
+    print(test_n_total, time.time() - st_time)
 
-    for i, d in enumerate(cand_relations):
-        pos = args.st_pos + i
-        if pos % 100 == 0:
-            out_dir = os.path.join(args.output, str(pos) + "-" + str(pos + 99))
-            if not os.path.exists(out_dir):
-                os.makedirs(out_dir)
-        out_path = os.path.join(out_dir, str(d["id"]) + ".json")
-        json.dump(d, open(out_path, "w"), indent=4)
+    # for i, d in enumerate(cand_relations):
+    #     pos = args.st_pos + i
+    #     if pos % 100 == 0:
+    #         out_dir = os.path.join(args.output, str(pos) + "-" + str(pos + 99))
+    #         if not os.path.exists(out_dir):
+    #             os.makedirs(out_dir)
+    #     out_path = os.path.join(out_dir, str(d["id"]) + ".json")
+    #     json.dump(d, open(out_path, "w"), indent=4)
 
     print("\nAverage Recall: %.2f" % test_recall)
     print("Results save to \"{}\"".format(args.output))

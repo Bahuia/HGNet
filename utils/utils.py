@@ -94,13 +94,13 @@ def is_entity(name, kb="freebase"):
     if kb == "freebase":
         return "ns:m." in name or "ns:g." in name
     else:
-        return "<http://dbpedia.org/resource/" in name
+        return "http://dbpedia.org/resource/" in name
 
 def is_type(name, kb="freebase"):
     if kb == "freebase":
-        return "ns:m." not in name and "ns:g." not in name and "ns:" in name
+        return "ns:m." not in name and "ns:g." not in name and name[:3] == "ns:"
     else:
-        return "<http://dbpedia.org/ontology/" in name
+        return "http://dbpedia.org/ontology/" in name
 
 def is_value(name):
     if name[0] == "\"" or name[0] == "<":
@@ -115,6 +115,14 @@ def is_relation(name, kb="freebase"):
     else:
         return "http://dbpedia.org/ontology/" in name or "http://dbpedia.org/property/" in name \
                or "http://www.w3.org/1999/02/22-rdf-syntax-ns#type" in name
+
+def get_operator_by_t(t):
+    if t == 0 or t % 3 == 1:
+        return "av"
+    elif t % 3 == 0:
+        return "ae"
+    else:
+        return "sv"
 
 def get_inv_op(op):
     OPS = ["<", ">", "<=", ">="]
@@ -163,6 +171,19 @@ def remove_type(var):
         assert "xsd:datetime" in var.lower() or "str" in var.lower() or "xsd:integer" in var.lower()
         return get_content_from_outermost_brackets(var, 0, "(")
     return var
+
+def step_to_op_step(t, mode):
+    assert mode in ["vertex", "edge"]
+    if mode == "vertex":
+        return step_to_av_step(t)
+    else:
+        return step_to_ae_step(t)
+
+def av_step_to_step(t_ins):
+    return 0 if t_ins == 0 else 3 * t_ins - 2
+
+def ae_step_to_step(t_ins):
+    return (t_ins + 1) * 3
 
 def step_to_av_step(t):
     return 0 if t == 0 else (t + 2) // 3
@@ -292,7 +313,64 @@ def pad_tensor_2d(l, pad_idx):
     data = torch.cat(data, 0)
     return data, torch.LongTensor(lens)
 
-def length_array_to_mask_tensor(length_array, value=None, reverse=True, mask_symbol=1):
+def pad_graph(tgt_aqgs):
+    bs = len(tgt_aqgs)
+    tgt_lens = [len(x) for x in tgt_aqgs]
+    max_len = max(tgt_lens)
+
+    new_tgt_aqgs = []
+    for t in range(max_len):
+
+        v_list = []
+        e_list = []
+        v_class_list = []
+        e_class_list = []
+        v_segment_list = []
+        e_segment_list = []
+        adj_list = []
+
+        for sid in range(bs):
+
+            v_num = (t - 2) // 3 + 2
+            e_num = (t - 1) // 3 * 2
+
+            if t < tgt_lens[sid]:
+                v, v_class, v_segment, \
+                e, e_class, e_segment, adj = tgt_aqgs[sid][t]
+            else:
+                # padding vectors
+                v = torch.LongTensor(v_num).zero_()
+                v_class = torch.LongTensor(v_num).zero_()
+                v_segment = torch.LongTensor(v_num).zero_()
+
+                e = torch.LongTensor(e_num).zero_()
+                e_class = torch.LongTensor(e_num).zero_()
+                e_segment = torch.LongTensor(e_num).zero_()
+
+                adj = torch.ones(v_num + e_num + 1, v_num + e_num + 1)
+
+            v_list.append(v)
+            e_list.append(e)
+            v_class_list.append(v_class)
+            e_class_list.append(e_class)
+            v_segment_list.append(v_segment)
+            e_segment_list.append(e_segment)
+            adj_list.append(adj)
+
+        v = torch.stack(v_list)
+        e = torch.stack(e_list)
+        v_classes = torch.stack(v_class_list)
+        e_classes = torch.stack(e_class_list)
+        v_segments = torch.stack(v_segment_list)
+        e_segments = torch.stack(e_segment_list)
+        adjs = torch.stack(adj_list)
+
+        new_tgt_aqgs.append([v, v_classes, v_segments,
+                             e, e_classes, e_segments,
+                             adjs])
+    return new_tgt_aqgs, torch.LongTensor(tgt_lens)
+
+def length_array_to_mask_tensor(length_array, value=None, reverse=True, mask_symbol=1, use_bool=False):
     max_len = max(length_array)
     batch_size = len(length_array)
 
@@ -311,7 +389,10 @@ def length_array_to_mask_tensor(length_array, value=None, reverse=True, mask_sym
                 if c == mask_symbol:
                     mask[b_id][c_id] = 1 if reverse else 0
 
-    mask = torch.ByteTensor(mask)
+    if not use_bool:
+        mask = torch.ByteTensor(mask)
+    else:
+        mask = torch.BoolTensor(mask)
     return mask
 
 def mk_graph_for_gnn(vertices, v_classes, v_segments, edges, e_classes, e_segments, triples):
@@ -416,6 +497,21 @@ def instance_pool_to_tensor(instance_pool, pad_idx):
     instance_s_ids = []
     for s_id, one_pool in enumerate(instance_pool):
         for _class, instance_list in one_pool.items():
+            for _instance in instance_list:
+                instance_tensor.append(_instance)
+                instance_classes.append(_class)
+                instance_s_ids.append(s_id)
+    instance_tensor, instance_lens = pad_tensor_1d(instance_tensor, pad_idx)
+    return instance_tensor, instance_lens, instance_classes, instance_s_ids
+
+def instance_pool_to_tensor_for_plm(instance_pool, pad_idx, sep_idx):
+    instance_tensor = []
+    instance_classes = []
+    instance_s_ids = []
+    for s_id, one_pool in enumerate(instance_pool):
+        for _class, instance_list in one_pool.items():
+            print(_class)
+            print(len(instance_list), [x.size() for x in instance_list])
             for _instance in instance_list:
                 instance_tensor.append(_instance)
                 instance_classes.append(_class)
@@ -913,3 +1009,69 @@ def timeout(seconds, error_message="Timeout Error: the cmd 30s have not finished
 
         return functools.wraps(func)(wrapper)
     return decorated
+
+def update_model(step, accumulation_steps, model, optimizer, clip_grad=1.0):
+    # Caculate gradients and update parameters
+    if (step + 1) % accumulation_steps == 0:
+        # clip the gradient.
+        if clip_grad > 0:
+            torch.nn.utils.clip_grad_norm_(model.parameters(), clip_grad)
+        optimizer.step()
+        optimizer.zero_grad()
+
+def eval_train_accuracy(tgt_objs_records, action_probs_records):
+    assert len(action_probs_records) == len(tgt_objs_records)
+
+    n_q_total, n_q_correct, n_aqg_correct = 0, 0, 0
+    n_aqg_step_correct, n_aqg_step_total = 0, 0
+    n_v_step_correct, n_v_step_total = 0, 0
+    n_e_step_correct, n_e_step_total = 0, 0
+
+    for x, y in zip(action_probs_records, tgt_objs_records):
+        action_probs, v_action_probs, e_action_probs = x
+        tgt_objs, tgt_v_ins_objs, tgt_e_ins_objs = y
+
+        for s_id in range(len(tgt_objs)):
+            # AQG generation
+            is_aqg_correct = True
+            for j in range(len(tgt_objs[s_id])):
+                pred_obj = torch.argmax(action_probs[s_id][j], dim=-1).item()
+                if pred_obj == tgt_objs[s_id][j]:
+                    n_aqg_step_correct += 1
+                else:
+                    is_aqg_correct = False
+            n_aqg_step_total += len(tgt_objs[s_id])
+            n_aqg_correct += is_aqg_correct
+
+            # vertex instance
+            is_v_correct = True
+            v_ins_objs = [x for x in tgt_v_ins_objs[s_id] if x != -1]
+            for j in range(len(v_ins_objs)):
+                pred_obj = torch.argmax(v_action_probs[s_id][j], dim=-1).item()
+                if pred_obj == v_ins_objs[j]:
+                    n_v_step_correct += 1
+                else:
+                    is_v_correct = False
+            n_v_step_total += len(v_ins_objs)
+
+            # edge instance
+            is_e_correct = True
+            e_ins_objs = [x for x in tgt_e_ins_objs[s_id] if x != -1]
+            for j in range(len(tgt_e_ins_objs[s_id])):
+                pred_obj = torch.argmax(e_action_probs[s_id][j], dim=-1).item()
+                if pred_obj == e_ins_objs[j]:
+                    n_e_step_correct += 1
+                else:
+                    is_e_correct = False
+            n_e_step_total += len(e_ins_objs)
+
+            n_q_correct += is_aqg_correct and is_v_correct and is_e_correct
+
+        n_q_total += len(tgt_objs)
+
+    train_aqg_acc = 100. * n_aqg_correct / n_q_total
+    train_aqg_step_acc = 100. * n_aqg_step_correct / n_aqg_step_total
+    train_v_step_acc = 100. * n_v_step_correct / n_v_step_total
+    train_e_step_acc = 100. * n_e_step_correct / n_e_step_total
+    train_q_acc = 100. * n_q_correct / n_q_total
+    return train_aqg_acc, train_aqg_step_acc, train_v_step_acc, train_e_step_acc, train_q_acc

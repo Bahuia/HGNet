@@ -19,7 +19,6 @@ from torch.autograd import Variable
 sys.path.append("..")
 from utils.embedding import Embeddings
 from models.rnn import LSTM
-from utils.utils import pad_tensor_1d
 from utils.utils import max_pooling_by_lens, max_pooling_by_mask, length_array_to_mask_tensor
 
 

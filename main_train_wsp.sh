@@ -2,7 +2,7 @@
 
 devices=2
 
-CUDA_LAUNCH_BLOCKING=1 python -u train.py \
+CUDA_LAUNCH_BLOCKING=1 python -u main_train.py \
 --dataset wsp \
 --seed 2021 \
 --train_data ./data/WebQSP/annotated_train.pkl \
@@ -11,7 +11,6 @@ CUDA_LAUNCH_BLOCKING=1 python -u train.py \
 --wo_vocab ./vocab/word_vocab_wsp.pkl \
 --emb_cache ./vocab/word_embeddings_cache_wsp.pt \
 --sparql_cache_path ./vocab/sparql_cache_wsp.pkl \
---save_all_cpt \
 --context_mode attention \
 --not_segment_embedding \
 --not_matching_feature \
@@ -26,7 +25,8 @@ CUDA_LAUNCH_BLOCKING=1 python -u train.py \
 --n_lstm_layers 1 \
 --n_gnn_blocks 3 \
 --heads 4 \
---n_epochs 50 \
+--start_valid_epoch 20 \
+--n_epochs 150 \
 --bs 16 \
 --ag 1 \
 --lr 2e-4 \

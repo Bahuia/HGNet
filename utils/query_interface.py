@@ -17,7 +17,7 @@ from SPARQLWrapper import SPARQLWrapper, JSON
 
 # kb_endpoint = "https://dbpedia.org/sparql"
 
-@timeout(2)
+@timeout(60)
 def KB_query_with_timeout(_query, kb_endpoint):
     """
     :param _query: sparql query statement

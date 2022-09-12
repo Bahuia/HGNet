@@ -18,37 +18,36 @@ import pickle
 from transformers import BertTokenizer
 
 sys.path.append("..")
-from utils.utils import mk_graph_for_gnn, get_inv_edge
-from utils.utils import step_to_av_step, step_to_ae_step, tokenize_word_sentence, tokenize_word_sentence_bert
-from utils.utils import text_to_tensor_1d, text_to_tensor_2d, pad_tensor_1d, pad_tensor_2d, instance_pool_to_tensor
+from utils.utils import *
 from rules.grammar import AbstractQueryGraph, get_relation_true_name, get_type_true_name, V_CLASS_IDS
 
 
-class AQGGenerationDataLoader:
+class HGNetDataLoader:
 
     def __init__(self, args):
         self.args = args
-        if not self.args.use_bert:
+        self.use_bert = self.args.plm_mode != "none"
+        if not self.use_bert:
             self.tokenizer = pickle.load(open(self.args.wo_vocab, 'rb'))
             self.pad = self.tokenizer.lookup(self.tokenizer.pad_token)
         else:
-            self.tokenizer = BertTokenizer.from_pretrained(self.args.bert_mode)
+            self.tokenizer = BertTokenizer.from_pretrained(self.args.plm_mode)
             self.pad = self.tokenizer.vocab["[PAD]"]
 
     def process_one_data(self, d):
 
-        if self.args.use_bert:
-            question_toks = d["question_toks_bert"]
+        if self.use_bert:
+            q_toks = d["question_toks_bert"]
             ment_f_ids = d["mention_feature_bert"]
         else:
-            question_toks = d["question_toks"]
+            q_toks = d["question_toks"]
             ment_f_ids = d["mention_feature"]
-        q = text_to_tensor_1d(question_toks, self.tokenizer)
+        q = text_to_tensor_1d(q_toks, self.tokenizer)
 
         if d["mention_feature"]:
             ment_f = torch.LongTensor([x for x in ment_f_ids])
         else:
-            ment_f = torch.LongTensor([0 for i in range(len(question_toks))])
+            ment_f = torch.LongTensor([0 for i in range(len(q_toks))])
         match_f = torch.LongTensor(d["matching_feature"])
 
         gold_aqg_obj_labels = [x for x in d["aqg_obj_labels"]]
@@ -61,7 +60,10 @@ class AQGGenerationDataLoader:
         vertex_pool = {}
         v_instance_names = []
         for v_class, v_list in d["instance_pool"]["vertex"].items():
-            if self.args.use_bert:
+            if self.use_bert:
+                # for v_name, v_true_name in v_list:
+                #     print(tokenize_word_sentence_bert(v_true_name, self.tokenizer))
+                #     exit()
                 vertex_pool[v_class] = [text_to_tensor_1d(tokenize_word_sentence_bert(v_true_name, self.tokenizer), self.tokenizer)
                                         for v_name, v_true_name in v_list]
             else:
@@ -73,7 +75,7 @@ class AQGGenerationDataLoader:
         edge_pool = {}
         e_instance_names = []
         for e_class, e_list in d["instance_pool"]["edge"].items():
-            if self.args.use_bert:
+            if self.use_bert:
                 edge_pool[e_class] = [text_to_tensor_1d(tokenize_word_sentence_bert(e_true_name, self.tokenizer), self.tokenizer)
                                       for e_name, e_true_name in e_list]
             else:
@@ -120,7 +122,7 @@ class AQGGenerationDataLoader:
     def load_data(self, datas, bs, training_proportion=1.0, use_small=False, shuffle=True):
 
         if use_small:
-            datas = datas[:10]
+            datas = datas[:1]
 
         if shuffle:
             random.shuffle(datas)
@@ -133,6 +135,9 @@ class AQGGenerationDataLoader:
         sample_index = 0  # sequence index within each batch
 
         for d in datas:
+            # if d["id"] != "WebQTest-538_49b4e9304f18a0a1cbe37bb162f61131":
+            #     continue
+
             if sample_index % bs == 0:
                 sample_index = 0
                 batch_index += 1
@@ -185,6 +190,205 @@ class AQGGenerationDataLoader:
         for b in self.iters:
             yield b
 
+class HGNetDataLoaderForPLM:
+
+    def __init__(self, args):
+        self.args = args
+        self.tokenizer = BertTokenizer.from_pretrained(self.args.plm_mode)
+        self.pad = self.tokenizer.vocab["[PAD]"]
+        self.sep = self.tokenizer.vocab["[SEP]"]
+
+    def process_one_data(self, d):
+
+        q_toks = d["question_toks_bert"]
+        ment_f_ids = d["mention_feature_bert"]
+
+        if d["mention_feature"]:
+            ment_f = torch.LongTensor([x for x in ment_f_ids])
+        else:
+            ment_f = torch.LongTensor([0 for i in range(len(q_toks))])
+        match_f = torch.LongTensor(d["matching_feature"])
+
+        gold_aqg_obj_labels = [x for x in d["aqg_obj_labels"]]
+        gold_v_instance_obj_labels = [x for x in d["v_instance_obj_labels"]]
+        gold_e_instance_obj_labels = [x for x in d["e_instance_obj_labels"]]
+        gold_v_copy_labels = [x for x in d["v_copy_labels"]]
+        gold_e_copy_labels = [x for x in d["e_copy_labels"]]
+        gold_segment_switch_labels = [x for x in d["segment_switch_labels"]]
+
+        # input_toks = []
+        # segment_ids = []
+        # input_mask = []
+        # q_pos = []
+
+        input_toks = ["[CLS]"] + q_toks[1:]
+        segment_ids = [0 for _ in input_toks]
+        input_mask = [1 for _ in input_toks]
+        q_pos = [[1, len(input_toks)]]
+
+        v_ins_pos = {}
+        v_ins_names = []
+        for v_class, v_list in d["instance_pool"]["vertex"].items():
+            v_ins_pos[v_class] = []
+            for v_name, v_true_name in v_list:
+                st = len(input_toks)
+                input_toks += ["[SEP]"] + tokenize_word_sentence_bert(v_true_name, self.tokenizer, start_cls=False)
+                segment_ids += [1 for _ in range(len(input_toks) - st)]
+                input_mask += [1 for _ in range(len(input_toks) - st)]
+                v_ins_names += [[v_class, v_name, v_true_name]]
+                v_ins_pos[v_class] += [[st + 1, len(input_toks)]]
+
+        e_ins_pos = {}
+        e_ins_names = []
+        for e_class, e_list in d["instance_pool"]["edge"].items():
+            e_ins_pos[e_class] = []
+            for e_name, e_true_name in e_list:
+                st = len(input_toks)
+                input_toks += ["[SEP]"] + tokenize_word_sentence_bert(e_true_name, self.tokenizer, start_cls=False)
+                segment_ids += [1 for _ in range(len(input_toks) - st)]
+                input_mask += [1 for _ in range(len(input_toks) - st)]
+                e_ins_names += [[e_class, e_name, e_true_name]]
+                e_ins_pos[e_class] += [[st + 1, len(input_toks)]]
+
+        # print(input_toks)
+        # print(segment_ids)
+        # print(input_mask)
+        # print(len(input_toks) == len(segment_ids) == len(input_mask))
+        # print(d["instance_pool"]["vertex"])
+        # print(d["instance_pool"]["edge"])
+        # for v_class, content in v_ins_pos.items():
+        #     for st, ed in content:
+        #         print(input_toks[st:ed])
+        # for e_class, content in e_ins_pos.items():
+        #     for st, ed in content:
+        #         print(input_toks[st:ed])
+        # exit()
+
+        input_ids = text_to_tensor_1d(input_toks, self.tokenizer)
+        segment_ids = torch.LongTensor(segment_ids)
+        input_mask = torch.LongTensor(input_mask)
+
+        gold_aqgs = []
+        gold_graphs = []
+        aqg = AbstractQueryGraph()
+        aqg.init_state()
+        for i, obj in enumerate(gold_aqg_obj_labels):
+            vertices, v_classes, v_segments, edges, e_classes, e_segments, triples = aqg.get_state()
+            gold_aqgs.append(aqg)
+            gold_graphs.append(mk_graph_for_gnn(vertices, v_classes, v_segments,
+                                                edges, e_classes, e_segments, triples))
+            op = aqg.cur_operation
+            if op == "av":
+                if i == len(gold_aqg_obj_labels) - 1:
+                    break
+                j = step_to_av_step(i)
+                v_class = obj
+                v_copy = gold_v_copy_labels[j] if self.args.use_v_copy else -1
+                switch_segment = gold_segment_switch_labels[j] if self.args.use_segment_embedding else False
+                new_obj = [v_class, v_copy, switch_segment]
+            elif op == "ae":
+                j = step_to_ae_step(i)
+                e_class = obj
+                e_copy = gold_e_copy_labels[j] if self.args.use_e_copy else -1
+                new_obj = [e_class, e_copy]
+            else:
+                new_obj = obj
+            aqg.update_state(op, new_obj)
+
+        return input_ids, segment_ids, input_mask, \
+               gold_aqgs, gold_graphs, gold_aqg_obj_labels, \
+               gold_v_instance_obj_labels, gold_e_instance_obj_labels, \
+               gold_v_copy_labels, gold_e_copy_labels, \
+               gold_segment_switch_labels, \
+               q_pos, ment_f, match_f, \
+               v_ins_pos, v_ins_names,\
+               e_ins_pos, e_ins_names, d
+
+    def load_data(self, datas, bs, training_proportion=1.0, use_small=False, shuffle=True):
+
+        if use_small:
+            datas = datas[:20]
+
+        if shuffle:
+            random.shuffle(datas)
+
+        data_len = int(len(datas) * training_proportion)
+        datas = datas[:data_len]
+
+        bl_x = []
+        batch_index = -1  # the index of sequence batches
+        sample_index = 0  # sequence index within each batch
+
+        for d in datas:
+            # if d["id"] != "WebQTest-832_c334509bb5e02cacae1ba2e80c176499":
+            #     continue
+
+            if sample_index % bs == 0:
+                sample_index = 0
+                batch_index += 1
+                bl_x.append([])
+            x = self.process_one_data(d)
+            bl_x[batch_index].append(x)
+            sample_index += 1
+
+        self.iters = []
+        self.n_batch = len(bl_x)
+        for x in bl_x:
+            batch = self.fix_batch(x)
+            self.iters.append(batch)
+
+    def fix_batch(self, x):
+
+        input_ids, segment_ids, _, \
+        gold_aqgs, gold_graphs, gold_aqg_obj_labels, \
+        gold_v_instance_obj_labels, gold_e_instance_obj_labels, \
+        gold_v_copy_labels, gold_e_copy_labels, \
+        gold_segment_switch_labels, \
+        q_pos, ment_f, match_f, \
+        v_ins_pos, v_ins_names, \
+        e_ins_pos, e_ins_names, data = zip(*x)
+
+        input_ids, input_lens = pad_tensor_1d(input_ids, self.pad)
+        segment_ids, _ = pad_tensor_1d(segment_ids, self.pad)
+        input_mask = length_array_to_mask_tensor(input_lens, reverse=False)
+
+        # print(input_ids.size())
+        # print(input_lens)
+        # print(segment_ids.size())
+        # print(segment_ids)
+        # print(input_mask.size())
+        # print(input_mask)
+        # exit()
+
+        ment_f, _ = pad_tensor_1d(ment_f, self.pad)
+        match_f = torch.cat(match_f, dim=0)
+
+        # # Candidate instance pool to tensor
+        # v_instance_tensor, v_instance_lens, v_instance_classes, v_instance_s_ids = instance_pool_to_tensor_for_plm(vertex_pool, self.pad, self.sep)
+        # e_instance_tensor, e_instance_lens, e_instance_classes, e_instance_s_ids = instance_pool_to_tensor_for_plm(edge_pool, self.pad, self.sep)
+        # exit()
+
+        if self.args.cuda:
+            input_ids = input_ids.to(self.args.gpu)
+            segment_ids = segment_ids.to(self.args.gpu)
+            input_mask = input_mask.to(self.args.gpu)
+            ment_f = ment_f.to(self.args.gpu)
+            match_f = match_f.to(self.args.gpu)
+            gold_graphs = [[[y.to(self.args.gpu) for y in g] for g in s] for s in gold_graphs]
+
+        return input_ids, segment_ids, input_mask,\
+               q_pos, ment_f, match_f, \
+               v_ins_pos, v_ins_names, \
+               e_ins_pos, e_ins_names, \
+               gold_aqgs, gold_graphs, gold_aqg_obj_labels, \
+               gold_v_instance_obj_labels, gold_e_instance_obj_labels, \
+               gold_v_copy_labels, gold_e_copy_labels, gold_segment_switch_labels, \
+               data
+
+    def next_batch(self):
+        for b in self.iters:
+            yield b
+
 
 class NonHierarchicalGenerationDataLoader:
 
@@ -200,17 +404,17 @@ class NonHierarchicalGenerationDataLoader:
     def process_one_data(self, d):
 
         if self.args.use_bert:
-            question_toks = d["question_toks_bert"]
+            q_toks = d["q_toks_bert"]
             ment_f_ids = d["mention_feature_bert"]
         else:
-            question_toks = d["question_toks"]
+            q_toks = d["q_toks"]
             ment_f_ids = d["mention_feature"]
-        q = text_to_tensor_1d(question_toks, self.tokenizer)
+        q = text_to_tensor_1d(q_toks, self.tokenizer)
 
         if d["mention_feature"]:
             ment_f = torch.LongTensor([x for x in ment_f_ids])
         else:
-            ment_f = torch.LongTensor([0 for i in range(len(question_toks))])
+            ment_f = torch.LongTensor([0 for i in range(len(q_toks))])
         match_f = torch.LongTensor(d["matching_feature"])
 
         gold_aqg_obj_labels = [x for x in d["aqg_obj_labels"]]
@@ -502,7 +706,7 @@ class RelationRankingDataLoader:
         if d["mention_feature"]:
             ment_f = torch.LongTensor([x for x in d["mention_feature"]])
         else:
-            ment_f = torch.LongTensor([0 for i in range(len(d["question_toks"]))])
+            ment_f = torch.LongTensor([0 for i in range(len(d["q_toks"]))])
 
 
         if self.dataset == "lcq":

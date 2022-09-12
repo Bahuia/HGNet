@@ -1,17 +1,14 @@
 #!/bin/bash
 
-devices=2
+devices=1
 
-CUDA_LAUNCH_BLOCKING=1 python -u train.py \
+CUDA_LAUNCH_BLOCKING=1 python -u main_train_plm.py \
 --dataset lcq \
 --seed 2021 \
 --train_data ./data/LC-QuAD/annotated_train.pkl \
 --valid_data ./data/LC-QuAD/annotated_dev.pkl \
---glove_path /home/cyr/resources/GloVe/glove.42B.300d.txt \
---wo_vocab ./vocab/word_vocab_lcq.pkl \
---emb_cache ./vocab/word_embeddings_cache_lcq.pt \
---sparql_cache_path ./vocab/sparql_cache_lcq.pkl \
---save_all_cpt \
+--plm_mode bert-large-uncased \
+--dropout 0.1 \
 --context_mode attention \
 --not_segment_embedding \
 --not_matching_feature \
@@ -26,9 +23,11 @@ CUDA_LAUNCH_BLOCKING=1 python -u train.py \
 --n_lstm_layers 1 \
 --n_gnn_blocks 3 \
 --heads 4 \
+--start_valid_epoch 0 \
 --n_epochs 100 \
---bs 16 \
---ag 1 \
+--bs 1 \
+--ag 16 \
 --lr 2e-4 \
+--lr_plm 2e-5 \
 --max_num_op 20 \
 --beam_size 7
