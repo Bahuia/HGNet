@@ -7,7 +7,7 @@ CUDA_LAUNCH_BLOCKING=1 python -u main_train_plm.py \
 --seed 2021 \
 --train_data ./data/ComplexWebQuestions/annotated_train.pkl \
 --valid_data ./data/ComplexWebQuestions/annotated_dev.pkl \
---plm_mode roberta-base-uncased \
+--plm_mode bert-base-uncased \
 --dropout 0.1 \
 --context_mode attention \
 --not_matching_score \
