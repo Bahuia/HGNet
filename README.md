@@ -1,4 +1,4 @@
-Data and Code for paper *Outlining and Filling: Hierarchical Query Graph Generation for Answering Complex Questions over Knowledge Graph* is available for research purposes.
+Data and Code for paper [*Outlining and Filling: Hierarchical Query Graph Generation for Answering Complex Questions over Knowledge Graphs*](https://arxiv.org/abs/2111.00732) is available for research purposes.
 
 ### Results
 We apply three KGQA benchmarks to evaluate our approach, ComplexWebQuestions ([Talmor and Berant, 2018](https://aclanthology.org/N18-1059.pdf)), LC-QuAD ([Trivedi et al., 2017](https://link.springer.com/chapter/10.1007/978-3-319-68204-4_22)), and WebQSP ([Yih et al., 2016](https://aclanthology.org/P16-2033/)).
