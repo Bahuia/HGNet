@@ -16,17 +16,17 @@ We apply three KGQA benchmarks to evaluate our approach, ComplexWebQuestions ([T
 
 
 ### Data
-* Download and unzip our preprocessed [data](https://drive.google.com/file/d/15Ux-zn1xYEh-iVFHudHc6044NYWRfcgN/view?usp=sharing) to `./`, you can also running our scripts under `./preprocess` to obtain them again.
+* Download and unzip our preprocessed [data](https://1drv.ms/u/s!AjOOZxoN9FBQgQ5zAKdzO06ghJlP?e=vIsvzz) to `./`, you can also running our scripts under `./preprocess` to obtain them again.
   
 * Both of them only contain English triples by removing other languages. Download and install [Virtuoso](https://virtuoso.openlinksw.com) to conduct the SPARQL query service for the downloaded Freebase and DBpedia. [Here](https://joernhees.de/blog/2015/11/23/setting-up-a-linked-data-mirror-from-rdf-dumps-dbpedia-2015-04-freebase-wikidata-linkedgeodata-with-virtuoso-7-2-1-and-docker-optional/) is a tutorial on how to install Virtuoso and import the knowledge graph into it.
 
 * Download GloVe Embedding [glove.42B.300d.txt](http://nlp.stanford.edu/data/glove.42B.300d.zip) and put it to `your_glove_path`.
 
-* Download our vocabulary from [here](https://drive.google.com/file/d/1vKqs6r96KTk34-9xz8QS_Dz56OCRNV-U/view?usp=sharing). Unzip and put it under `./`. It contains our used SPARQL cache for Execution-Guided strategy.
+* Download our vocabulary from [here](https://1drv.ms/u/s!AjOOZxoN9FBQgQ-iIJMRDYgMeLpg?e=AOxfgs). Unzip and put it under `./`. It contains our used SPARQL cache for Execution-Guided strategy.
 
 ### Virtuoso SPARQL Service
 
-Download our used Virtuoso SPARQL service [virtuoso-opensource](https://1drv.ms/u/s!AjOOZxoN9FBQgQ1VXpmcQ6XTb5aJ) and unzip it in another directory. [Here](https://joernhees.de/blog/2015/11/23/setting-up-a-linked-data-mirror-from-rdf-dumps-dbpedia-2015-04-freebase-wikidata-linkedgeodata-with-virtuoso-7-2-1-and-docker-optional/) is a tutorial on how to install Virtuoso and import the knowledge graph into it. 
+Download our used Virtuoso SPARQL service [virtuoso-opensource](https://1drv.ms/u/s!AjOOZxoN9FBQgQ1VXpmcQ6XTb5aJ?e=6TLp78) and unzip it in another directory. [Here](https://joernhees.de/blog/2015/11/23/setting-up-a-linked-data-mirror-from-rdf-dumps-dbpedia-2015-04-freebase-wikidata-linkedgeodata-with-virtuoso-7-2-1-and-docker-optional/) is a tutorial on how to install Virtuoso and import the knowledge graph into it. 
 
 1. Get root access
 2. Edit `virtuoso-opensource/database/virtuoso.ini` and set the property "DirsAllowed" to your path.
@@ -82,7 +82,7 @@ Before testing, need to train a model first and set the following hyperparameter
 --cpt your_trained_model_path
 --kb_endpoint your_sparql_service_ip
 ```
-You can also directly download our trained models from [here](https://1drv.ms/u/s!AjOOZxoN9FBQgQyz64Z8-yIaRsX1). Unzip and put it under `./`.
+You can also directly download our trained models from [here](https://1drv.ms/u/s!AjOOZxoN9FBQgQyGJE12dAGbjuYl?e=RTMUrs). Unzip and put it under `./`.
 
 Execute the following command for testing the model on ComplexWebQuestions.
 ```bash
@@ -104,7 +104,7 @@ Before testing, need to train a model first and set the following hyperparameter
 --cpt your_trained_model_path
 --kb_endpoint your_sparql_service_ip
 ```
-You can also directly download our trained models from [here](https://1drv.ms/u/s!AjOOZxoN9FBQgQyz64Z8-yIaRsX1). Unzip and put it under `./`.
+You can also directly download our trained models from [here](https://1drv.ms/u/s!AjOOZxoN9FBQgQyGJE12dAGbjuYl?e=RTMUrs). Unzip and put it under `./`.
 
 Execute the following command for testing the model on ComplexWebQuestions.
 ```bash
