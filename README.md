@@ -17,8 +17,6 @@ We apply three KGQA benchmarks to evaluate our approach, ComplexWebQuestions ([T
 
 ### Data
 * Download and unzip our preprocessed [data](https://1drv.ms/u/s!AjOOZxoN9FBQgQ5zAKdzO06ghJlP?e=vIsvzz) to `./`, you can also running our scripts under `./preprocess` to obtain them again.
-  
-* Both of them only contain English triples by removing other languages. Download and install [Virtuoso](https://virtuoso.openlinksw.com) to conduct the SPARQL query service for the downloaded Freebase and DBpedia. [Here](https://joernhees.de/blog/2015/11/23/setting-up-a-linked-data-mirror-from-rdf-dumps-dbpedia-2015-04-freebase-wikidata-linkedgeodata-with-virtuoso-7-2-1-and-docker-optional/) is a tutorial on how to install Virtuoso and import the knowledge graph into it.
 
 * Download GloVe Embedding [glove.42B.300d.txt](http://nlp.stanford.edu/data/glove.42B.300d.zip) and put it to `your_glove_path`.
 
@@ -26,7 +24,9 @@ We apply three KGQA benchmarks to evaluate our approach, ComplexWebQuestions ([T
 
 ### Virtuoso SPARQL Service
 
-Download our used Virtuoso SPARQL service [virtuoso-opensource](https://1drv.ms/u/s!AjOOZxoN9FBQgQ1VXpmcQ6XTb5aJ?e=6TLp78) and unzip it in another directory. [Here](https://joernhees.de/blog/2015/11/23/setting-up-a-linked-data-mirror-from-rdf-dumps-dbpedia-2015-04-freebase-wikidata-linkedgeodata-with-virtuoso-7-2-1-and-docker-optional/) is a tutorial on how to install Virtuoso and import the knowledge graph into it. 
+Both of the KGs we used only contain English triples by removing other languages. 
+Download and install [Virtuoso](https://virtuoso.openlinksw.com) to conduct the SPARQL query service for the downloaded Freebase and DBpedia.
+You can also download our conducted Virtuoso SPARQL service [virtuoso-opensource](https://1drv.ms/u/s!AjOOZxoN9FBQgQ1VXpmcQ6XTb5aJ?e=6TLp78) and unzip it in another directory. [Here](https://joernhees.de/blog/2015/11/23/setting-up-a-linked-data-mirror-from-rdf-dumps-dbpedia-2015-04-freebase-wikidata-linkedgeodata-with-virtuoso-7-2-1-and-docker-optional/) is a tutorial on how to install Virtuoso and import the knowledge graph into it. 
 
 1. Get root access
 2. Edit `virtuoso-opensource/database/virtuoso.ini` and set the property "DirsAllowed" to your path.
