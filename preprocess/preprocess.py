@@ -14,15 +14,13 @@ import json
 import copy
 import pickle
 import argparse
-import time
-# import jsonlines
-from transformers import BertTokenizer
-
+import jsonlines
 sys.path.append("..")
 from rules.sparql import SPARQLParserCWQ, SPARQLParserLCQ, SPARQLParserWSP
-from utils.utils import tokenize_word_sentence, tokenize_word_sentence_bert, is_value, exact_sequence_matching, cal_scores
+from utils.utils import tokenize_word_sentence, tokenize_word_sentence_plm, is_value, exact_sequence_matching
 from utils.dictionary import init_vocab
 from utils.query_interface import KB_query
+from transformers import AutoTokenizer
 from rules.grammar import get_relation_true_name, get_type_true_name
 
 
@@ -58,7 +56,7 @@ def parse_sparql_for_cwq(source_path, data_path, relation_pool, training=False):
             "id": data["ID"],
             "question": data["question"],
             "question_toks": tokenize_word_sentence(data["question"]),
-            "question_toks_bert": tokenize_word_sentence_bert(data["question"], bert_tokenizer),
+            "question_toks_bert": tokenize_word_sentence_plm(data["question"], bert_tokenizer),
             "mention_feature": None,
             "mention_feature_bert": None,
             "sparql": data["sparql"],
@@ -129,9 +127,7 @@ def mk_vocabs_for_cwq(processed_datas, relation_pool):
             word_vocab.add(tok)
     return word_vocab
 
-
 ############################################## LC-QuAD Preprocessing ###################################################
-
 def parse_sparql_for_lcq(source_path, data_path, individual_relation_pool_path, relation_pool, training=False):
     source_datas = json.load(open(source_path))
     parser = SPARQLParserLCQ()
@@ -152,7 +148,7 @@ def parse_sparql_for_lcq(source_path, data_path, individual_relation_pool_path, 
         question_toks = tokenize_word_sentence(question)
         mention_feature = [0 for _ in range(len(question_toks))]
 
-        question_toks_bert = tokenize_word_sentence_bert(question, bert_tokenizer)
+        question_toks_bert = tokenize_word_sentence_plm(question, bert_tokenizer)
         mention_feature_bert = [0 for _ in range(len(question_toks_bert))]
 
         if data["entity1_mention"] != "":
@@ -160,7 +156,7 @@ def parse_sparql_for_lcq(source_path, data_path, individual_relation_pool_path, 
             question_toks += ["[sep]"] + ment_toks_1
             mention_feature += [1 for _ in range(len(ment_toks_1) + 1)]
 
-            ment_toks_bert_1 = tokenize_word_sentence_bert(data["entity1_mention"], bert_tokenizer, start_cls=False)
+            ment_toks_bert_1 = tokenize_word_sentence_plm(data["entity1_mention"], bert_tokenizer, start_cls=False)
             question_toks_bert += ["[sep]"] + ment_toks_bert_1
             mention_feature_bert += [1 for _ in range(len(ment_toks_bert_1) + 1)]
 
@@ -169,7 +165,7 @@ def parse_sparql_for_lcq(source_path, data_path, individual_relation_pool_path, 
             question_toks += ["[sep]"] + ment_toks_2
             mention_feature += [1 for _ in range(len(ment_toks_2) + 1)]
 
-            ment_toks_bert_2 = tokenize_word_sentence_bert(data["entity2_mention"], bert_tokenizer, start_cls=False)
+            ment_toks_bert_2 = tokenize_word_sentence_plm(data["entity2_mention"], bert_tokenizer, start_cls=False)
             question_toks_bert += ["[sep]"] + ment_toks_bert_2
             mention_feature_bert += [1 for _ in range(len(ment_toks_bert_2) + 1)]
 
@@ -184,12 +180,9 @@ def parse_sparql_for_lcq(source_path, data_path, individual_relation_pool_path, 
             "query": query
         }
         processed_datas.append(new_data)
-    # json.dump(processed_datas, open(data_path, "w", encoding="utf-8"), indent=2)
+    json.dump(processed_datas, open(data_path, "w", encoding="utf-8"), indent=2)
 
-    st_time = time.time()
     build_individual_relation_pool_for_lcq(source_datas, individual_relation_pool_path, kb_endpoint)
-    print(time.time() - st_time)
-    exit()
 
     if training:
         word_vocab = mk_vocabs_for_lcq(processed_datas, relation_pool)
@@ -242,16 +235,16 @@ def build_individual_relation_pool_for_lcq(source_datas, output_path, kb_endpoin
         rels.sort()
         relation_pool.append({"id": data["id"], "relation_pool": rels})
 
-    # if not os.path.exists(output_path):
-    #     os.makedirs(output_path)
-    #
-    # for i, d in enumerate(relation_pool):
-    #     if i % 100 == 0:
-    #         out_dir = os.path.join(output_path, str(i) + "-" + str(i + 99))
-    #         if not os.path.exists(out_dir):
-    #             os.makedirs(out_dir)
-    #     out_path = os.path.join(out_dir, str(d["id"]) + ".json")
-    #     json.dump(d, open(out_path, "w"), indent=4)
+    if not os.path.exists(output_path):
+        os.makedirs(output_path)
+
+    for i, d in enumerate(relation_pool):
+        if i % 100 == 0:
+            out_dir = os.path.join(output_path, str(i) + "-" + str(i + 99))
+            if not os.path.exists(out_dir):
+                os.makedirs(out_dir)
+        out_path = os.path.join(out_dir, str(d["id"]) + ".json")
+        json.dump(d, open(out_path, "w"), indent=4)
 
 def build_type_pool_for_lcq(in_path, out_path):
 
@@ -297,7 +290,6 @@ def mk_vocabs_for_lcq(processed_datas, relation_pool):
             word_vocab.add(tok)
     return word_vocab
 
-
 ############################################## WebQSP Preprocessing ####################################################
 def parse_sparql_for_wsp(source_path, data_path, relation_pool, training=False):
     source_datas = json.load(open(source_path))
@@ -305,7 +297,6 @@ def parse_sparql_for_wsp(source_path, data_path, relation_pool, training=False):
     processed_datas = []
     for data in source_datas["Questions"]:
 
-        # print(data["Parses"][0]["Sparql"])
         if not data["Parses"][0]["InferentialChain"]:
             continue
 
@@ -317,7 +308,7 @@ def parse_sparql_for_wsp(source_path, data_path, relation_pool, training=False):
         question_toks = tokenize_word_sentence(question)
         mention_feature = [0 for _ in range(len(question_toks))]
 
-        question_toks_bert = tokenize_word_sentence_bert(question, bert_tokenizer)
+        question_toks_bert = tokenize_word_sentence_plm(question, bert_tokenizer)
         mention_feature_bert = [0 for _ in range(len(question_toks_bert))]
 
         if ment is not None:
@@ -325,7 +316,7 @@ def parse_sparql_for_wsp(source_path, data_path, relation_pool, training=False):
             question_toks += ["[sep]"] + ment_toks
             mention_feature += [1 for _ in range(len(ment_toks) + 1)]
 
-            ment_toks_bert = tokenize_word_sentence_bert(ment, bert_tokenizer, start_cls=False)
+            ment_toks_bert = tokenize_word_sentence_plm(ment, bert_tokenizer, start_cls=False)
             question_toks_bert += ["[sep]"] + ment_toks_bert
             mention_feature_bert += [1 for _ in range(len(ment_toks_bert) + 1)]
 
@@ -440,7 +431,7 @@ if __name__ == '__main__':
     if not os.path.exists(vocab_dir):
         os.makedirs(vocab_dir)
 
-    bert_tokenizer = BertTokenizer.from_pretrained("/home/cyr/resources/BERT_model/bert-base-uncased/")
+    bert_tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
     word_vocab = mk_bert_vocab(bert_tokenizer)
     print("BERT Word vocabulary size: {}".format(len(word_vocab)))
     pickle.dump(word_vocab, open(os.path.join(vocab_dir, "word_vocab_bert.pkl"), "wb"))
@@ -461,11 +452,9 @@ if __name__ == '__main__':
                              "../data/ComplexWebQuestions/parsed_train.json",
                              rel_pool,
                              training=True)
-
         parse_sparql_for_cwq("../data/ComplexWebQuestions/ComplexWebQuestions_dev.json",
                              "../data/ComplexWebQuestions/parsed_dev.json",
                              rel_pool)
-
         parse_sparql_for_cwq("../data/ComplexWebQuestions/ComplexWebQuestions_test.json",
                              "../data/ComplexWebQuestions/parsed_test.json",
                              rel_pool)
@@ -488,23 +477,20 @@ if __name__ == '__main__':
 
         kb_endpoint = "http://10.201.102.90:8890//sparql"
 
-
-        # rel_pool = build_relation_pool_for_lcq(kb_endpoint)
+        rel_pool = build_relation_pool_for_lcq(kb_endpoint)
         rel_pool_path = "../data/LC-QuAD/relation_pool.json"
-        # json.dump(rel_pool, open(rel_pool_path, "w", encoding="utf-8"), indent=2)
+        json.dump(rel_pool, open(rel_pool_path, "w", encoding="utf-8"), indent=2)
         rel_pool = json.load(open(rel_pool_path))
 
-        # parse_sparql_for_lcq("../data/LC-QuAD/LC-QuAD_train.json",
-        #                      "../data/LC-QuAD/parsed_train.json",
-        #                      "../data/LC-QuAD/individual_relation_pool_train",
-        #                      rel_pool,
-        #                      training=True)
-        #
-        # parse_sparql_for_lcq("../data/LC-QuAD/LC-QuAD_dev.json",
-        #                      "../data/LC-QuAD/parsed_dev.json",
-        #                      "../data/LC-QuAD/individual_relation_pool_dev",
-        #                      rel_pool)
-
+        parse_sparql_for_lcq("../data/LC-QuAD/LC-QuAD_train.json",
+                             "../data/LC-QuAD/parsed_train.json",
+                             "../data/LC-QuAD/individual_relation_pool_train",
+                             rel_pool,
+                             training=True)
+        parse_sparql_for_lcq("../data/LC-QuAD/LC-QuAD_dev.json",
+                             "../data/LC-QuAD/parsed_dev.json",
+                             "../data/LC-QuAD/individual_relation_pool_dev",
+                             rel_pool)
         parse_sparql_for_lcq("../data/LC-QuAD/LC-QuAD_test.json",
                              "../data/LC-QuAD/parsed_test.json",
                              "../data/LC-QuAD/individual_relation_pool_test",
@@ -521,7 +507,6 @@ if __name__ == '__main__':
                                        "../data/LC-QuAD/seq2seq_test.json")
 
     elif args.dataset == "wsp":
-
         print("Now preprocessing WebQSP ... ")
 
         kb_endpoint = "http://10.201.69.194:8890//sparql"
@@ -539,7 +524,6 @@ if __name__ == '__main__':
         parse_sparql_for_wsp("../data/WebQSP/WebQSP.test.json",
                              "../data/WebQSP/parsed_test.json",
                              rel_pool)
-
         build_value_pool_for_wsp("../data/WebQSP/parsed_train.json",
                                  "../data/WebQSP/value_pool.json")
 
@@ -549,6 +533,5 @@ if __name__ == '__main__':
         prepare_data_for_bart_baseline("wsp",
                                        "../data/WebQSP/parsed_test.json",
                                        "../data/WebQSP/seq2seq_test.json")
-
     else:
         pass

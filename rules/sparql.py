@@ -11,7 +11,6 @@
 import re
 import copy
 import sys
-import json
 sys.path.append("..")
 from utils.utils import get_content_from_outermost_brackets, get_content_behind_key_word, \
     is_variable, is_entity, is_type, is_value, is_relation, \

@@ -4,7 +4,7 @@
 """
 # @Time    : 2020/5/1
 # @Author  : Yongrui Chen
-# @File    : preprocess.py
+# @File    : annotate.py
 # @Software: PyCharm
 """
 
@@ -23,7 +23,7 @@ from transformers import BertTokenizer
 sys.path.append("..")
 from rules.sparql import Annotator
 from rules.grammar import build_instance_pool, V_CLASS_IDS, E_CLASS_IDS
-from utils.utils import tokenize_word_sentence, tokenize_word_sentence_bert, big_bracket_pattern, step_to_ae_step
+from utils.utils import tokenize_word_sentence, tokenize_word_sentence_plm, big_bracket_pattern, step_to_ae_step
 
 
 def annotate(dataset, data_path, ent_pool_path, rel_pool_path, type_pool_path, val_pool_path, output, rel_topk, kb_endpoint, training=False):
@@ -274,12 +274,12 @@ def enhance_edge_matching(q, e_instances):
 
 def enhance_relation_matching(q, rel_instances):
     q_toks = tokenize_word_sentence(q)
-    q_toks_bert = tokenize_word_sentence_bert(q, bert_tokenizer, start_cls=False)
+    q_toks_bert = tokenize_word_sentence_plm(q, bert_tokenizer, start_cls=False)
     rel_match_f = []
     for rel_name, rel_true_name in rel_instances:
         one_f = 0
         rel_toks = tokenize_word_sentence(rel_true_name)
-        rel_toks_bert = tokenize_word_sentence_bert(rel_true_name, bert_tokenizer, start_cls=False)
+        rel_toks_bert = tokenize_word_sentence_plm(rel_true_name, bert_tokenizer, start_cls=False)
         for tok in rel_toks:
             if tok in q_toks:
                 one_f = 1

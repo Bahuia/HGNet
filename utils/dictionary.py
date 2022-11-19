@@ -11,7 +11,6 @@
 from six import iteritems
 import codecs
 
-
 def init_vocab(unk=None, pad=None):
     vocab = Dictionary()
     if unk is not None:

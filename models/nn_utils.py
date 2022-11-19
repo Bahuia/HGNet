@@ -1,8 +1,15 @@
-import copy
-import torch
+# -*- coding: utf-8 -*-
+# !/usr/bin/python
+
+"""
+# @Time    : 2021/8/30
+# @Author  : Yongrui Chen
+# @File    : nn_utils.py
+# @Software: PyCharm
+"""
+
 import torch.nn.functional as F
 from torch.autograd import Variable
-import numpy as np
 from utils.utils import *
 from utils.query_interface import KB_query, KB_query_with_timeout
 from rules.grammar import V_CLASS_IDS, E_CLASS_IDS, AbstractQueryGraph
@@ -263,50 +270,6 @@ def combine_instance_auxiliary_encoding(one_tgt_embed, ins_enc, t, tgt_aqgs, mod
     one_tgt_embed = torch.add(one_tgt_embed, aux_ins_enc_t)
     return one_tgt_embed
 
-def mk_instance_auxiliary_encoding2(tgt_aqgs, cur_ins_enc, zero_embed, mode, t_constraint=10000):
-    """
-    Add the vertex/edge instance information when predicting instances
-    @param tgt_aqgs:            List(bs), original AQG data structure at each step
-    @param cur_ins_enc:         (bs, n_ins, d_h)
-    @param zero_embed:          (d_h)
-    @param mode:                "vertex" and "edge"
-    @return:                    (max_tgt_ins_len, bs, d_h)
-    """
-    assert mode in ["vertex", "edge"]
-
-    bs = len(tgt_aqgs)
-    max_tgt_len = max([len(x) for x in tgt_aqgs])
-
-    final_ins_enc = []
-    for t in range(max_tgt_len):
-        # Check is it filling allowed
-        if not allow_filling_at_t(t, mode):
-            continue
-
-        t_ins = step_to_op_step(t, mode)
-
-        if t_ins > t_constraint:
-            break
-
-        final_ins_enc_t = []
-        for sid in range(bs):
-            final_aqg = tgt_aqgs[sid][-1]
-            if mode == "vertex" and t_ins < final_aqg.vertex_number:
-                # Find the vertex id that is added at step t_ins.
-                ins_t = final_aqg.get_v_add_history(t_ins)
-                final_ins_enc_t.append(cur_ins_enc[sid][ins_t])     # (d_h)
-            elif mode == "edge" and t_ins < final_aqg.edge_number // 2:
-                # Find the edge id that is added at step t_ins.
-                ins_t = final_aqg.get_e_add_history(t_ins)
-                final_ins_enc_t.append(cur_ins_enc[sid][ins_t])     # (d_h)
-            else:
-                # Padding with zero embedding
-                final_ins_enc_t.append(zero_embed)                  # (d_h)
-        final_ins_enc.append(torch.stack(final_ins_enc_t, dim=0))
-    # final_ins_enc:    (max_tgt_ins_len, bs, d_h)
-    final_ins_enc = torch.stack(final_ins_enc, dim=0)
-    return final_ins_enc
-
 def get_outlining_action_probability(t, dec_out, av_readout, ae_readout, sv_pointer_net, v_enc, args, data):
     """
     Calculate the action_probability of AQG decoding
@@ -465,6 +428,42 @@ def get_filling_action_probability_for_beams(t, dec_out, beams, link_pointer_net
 
     return action_prob, ins_mask
 
+def get_nhgg_action_probability(t, dec_out, av_pointer_net, ae_pointer_net, sv_pointer_net, v_enc, v_ins_pool, v_ins_pool_mask, e_ins_pool, e_ins_pool_mask, args, data):
+    """
+    Calculate the action_probability of AQG decoding
+    @param t:                   int, aqg decoding step
+    @param dec_out:             (max_tgt_ins_len, bs, d_h)
+    @param av_readout:          linear layer: 2*d_h --> d_h
+    @param ae_readout:          linear layer: 2*d_h --> d_h
+    @param sv_pointer_net:      pointer network layer
+    @param v_enc:               List(max_tgt_len), each element size (bs, n_v, d_h)
+    @param args:                config
+    @param data:                original data
+    @return:
+    """
+    op = get_operator_by_t(t)
+    if op == "av":
+        # Add Vertex
+        # action_prob:      (bs, V_CLASS_NUM)
+        action_prob = av_pointer_net(src_encodings=v_ins_pool,
+                                     src_token_mask=v_ins_pool_mask,
+                                     query_vec=dec_out[t].unsqueeze(0))
+
+    elif op == "ae":
+        # Add Edge
+        # action_prob:      (bs, E_CLASS_NUM)
+        action_prob = ae_pointer_net(src_encodings=e_ins_pool,
+                                     src_token_mask=e_ins_pool_mask,
+                                     query_vec=dec_out[t].unsqueeze(0))
+    else:
+        # Select Vertex
+        # Cannot select the newly added point
+        # action_prob:      (bs, n_v + 1)
+        action_prob = sv_pointer_net(src_encodings=v_enc[t],
+                                     src_token_mask=mk_sv_mask(v_enc[t]) == 0,
+                                     query_vec=dec_out[t].unsqueeze(0))
+    return action_prob
+
 def apply_constraint_for_vertex(t, v_mask, tgt_objs, tgt_copy_objs, beams, ins_pool, args):
     t_av = step_to_op_step(t, "vertex")
 
@@ -544,7 +543,7 @@ def apply_constraint_for_edge(t, e_mask, tgt_objs, tgt_copy_objs, beams, ins_poo
                                                 dataset=args.dataset,
                                                 data=data[bid])
 
-            if args.use_kb_constraint:
+            if args.use_eg:
                 e_mask = execution_guided_constraint(t_ae=t_ae,
                                                      bid=bid,
                                                      e_mask=e_mask,
@@ -619,8 +618,6 @@ def mk_constraint_for_relation(t_ae, bid, e_mask, e_class, aqg, dataset, data):
                 now_s, now_o = s, o
                 break
 
-        # print("---", e_mask[bid])
-
         assert now_s != -1 and now_o != -1
         if now_s in date_vars or now_o in date_vars:
             for i, (e_ins_name, _) in enumerate(data["instance_pool"]["edge"][e_class]):
@@ -637,8 +634,7 @@ def mk_constraint_for_relation(t_ae, bid, e_mask, e_class, aqg, dataset, data):
 def execution_guided_constraint(t_ae, bid, e_mask, e_class, aqg, data, kb, kb_endpoint, use_subgraph):
     n_timeout = 0
     eid = aqg.get_e_add_history(t_ae)
-    # print("++++++++++++", t_ae, bid)
-    # aqg.show_state()
+
     for i, (e_ins_name, _) in enumerate(data["instance_pool"]["edge"][e_class]):
         if e_mask[bid][i] == 1:
             continue
@@ -656,15 +652,11 @@ def execution_guided_constraint(t_ae, bid, e_mask, e_class, aqg, data, kb, kb_en
                 continue
 
             for one_query in tmp_queries:
-                # print(one_query)
                 result = KB_query_with_timeout(one_query, kb_endpoint)
-                # print(result)
-                # print()
 
                 if result == "TimeOut":
                     result = [False]
                     n_timeout += 1
-                # print(src_mask[b_id])
                 if not result[0]:
                     e_mask[bid][i] = 1
                     break
@@ -673,8 +665,6 @@ def execution_guided_constraint(t_ae, bid, e_mask, e_class, aqg, data, kb, kb_en
                     e_mask[bid][j] = 1
                 break
         except:
-            # if self.args.dataset != "lcq":
-            #     src_mask[b_id][i] = 1
             e_mask[bid][i] = 1
             continue
     return e_mask
@@ -1028,7 +1018,7 @@ def mk_meta_entries_for_av(t, beams, n_beams, action_prob, copy_action_prob, seg
                     continue
 
                 # Get the possible choices of Segment Switch.
-                seg_switch_range = get_segment_switch_range(args.dataset, aqg, args.v_num_start_switch_segment)
+                seg_switch_range = get_segment_switch_range(args.dataset, aqg, args.n_v_switch_segment)
                 for seg in seg_switch_range:
                     new_aqg_score_1 = new_aqg_score
                     if args.dataset == "cwq":
@@ -1322,6 +1312,18 @@ def organize_outlining_beams(t, beams, meta_entries, completed_beams, max_beam_s
     return new_beams, new_n_beams, live_beam_ids
 
 def organize_filling_beams(t, beams, tgt_objs, meta_entries, completed_beams, max_beam_sz, data, mode):
+    """
+    Organize the beams in Outlining, to select the top-k possible expansions as the new beams.
+    @param t:                       int, aqg decoding step
+    @param tgt_objs:
+    @param beams:                   List(beam_sz), original beams
+    @param meta_entries:            List, possible expansions of beams
+    @param completed_beams:         List, beams that finish Outlining
+    @param max_beam_sz:             maximum size of beam
+    @param args:                    config
+    @param one_data:                one original data
+    @return:      new_beams:        List of new beams
+    """
     bs = len(meta_entries)
 
     new_beams = []
@@ -1393,7 +1395,6 @@ def organize_filling_beams(t, beams, tgt_objs, meta_entries, completed_beams, ma
             new_n_beams.append(one_n_beams)
             new_beams.extend(one_new_beams)
             live_beam_ids.extend(one_live_beam_ids)
-
 
     return new_beams, new_n_beams, live_beam_ids
 
@@ -1471,7 +1472,6 @@ def init_zero_decoder_state(q_enc):
 
 def pad_input_embeds_for_gnn(v_embeds, e_embeds, adjs):
 
-    # print([x.size() for x in e_embeds])
     v_embeds, _ = pad_tensor_1d(v_embeds, pad_idx=0)
     e_embeds, _ = pad_tensor_1d(e_embeds, pad_idx=0)
 
@@ -1555,7 +1555,6 @@ def expand_data_by_beam_number(datas, n_beams):
 
 def is_complete(completed_beams, max_beam_sz):
     count = sum([1 if len(x) == max_beam_sz else 0 for x in completed_beams])
-    # print("---", count, len(completed_beams))
     if count == len(completed_beams):
         return True
     else:
@@ -1586,8 +1585,6 @@ def mk_input_by_schedule(context, q_enc, q_vec, q_mask, g_enc, ins_enc, ins_pool
         in_ins_pool.append(ins_pool[beam.sid])
         in_data.append(data[beam.sid])
 
-        # print("+++", beam.t, beam.prev_beam_id)
-        # print(len(g_enc), [x.size() for x in g_enc])
         in_g_enc.append(g_enc[beam.t][beam.prev_beam_id])
         in_ins_enc.append(ins_enc[beam.t][beam.prev_beam_id])
 
@@ -1614,7 +1611,7 @@ def update_schedule(schedules, in_beams, out_beams, finished_beams):
         for b in out_beams[sid_v]:
             finished_beams[out_beams[sid_v][0].sid].append(b)
 
-def update_schedule_with_kb_constraint(schedules, in_beams, out_beams, finished_beams, dataset, kb, kb_endpoint):
+def update_schedule_with_eg(schedules, in_beams, out_beams, finished_beams, dataset, kb, kb_endpoint):
     for beam in in_beams:
         schedules[beam.sid] += 1
     for sid_v in range(len(out_beams)):
@@ -1652,27 +1649,14 @@ def combine_and_sort_by_sid(tmp_beams, beams, tmp_live_beam_ids, live_beam_ids, 
     assert len(beams) == len(live_beam_ids)
 
     tmp = [[beams[i], live_beam_ids[i]] for i in range(len(beams))]
-    # for x, y in tmp:
-    #     print(x.sid_v)
-    #     print(y)
-    # print("------")
 
     if mode == "vertex":
         tmp.sort(key=lambda x: x[0].sid_v)
     else:
         tmp.sort(key=lambda x: x[0].sid_e)
-    # for x, y in tmp:
-    #     print(x.sid_v)
-    #     print(y)
-    # print("+++++")
 
     beams = [x[0] for x in tmp]
     live_beam_ids = [x[1] for x in tmp]
-
-    # for i, x in enumerate(beams):
-    #     print(x.sid_v, live_beam_ids[i])
-    # print("----------------")
-
     return beams, n_beams, live_beam_ids
 
 def get_final_graph_embeddings(g_embeds, ins_embeds, tgt_objs):
@@ -1685,9 +1669,5 @@ def get_final_graph_embeddings(g_embeds, ins_embeds, tgt_objs):
         final_ins_embeds.append(ins_embeds[index[i]][i])
     final_g_embeds = torch.stack(final_g_embeds, dim=0)
 
-    # print(final_g_embeds.size())
-    # print([x.size() for x in final_ins_embeds])
     final_ins_embeds, _ = pad_tensor_1d(final_ins_embeds, pad_idx=0)
-    # print(final_ins_embeds.size())
-    # exit()
     return final_g_embeds, final_ins_embeds

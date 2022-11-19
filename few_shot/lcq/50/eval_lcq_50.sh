@@ -1,26 +1,24 @@
 #!/bin/bash
 
-devices=2
+devices=3
+cpt_path=$1
 
-CUDA_LAUNCH_BLOCKING=1 python -u ../../../eval.py \
+CUDA_LAUNCH_BLOCKING=1 python -u eval.py \
 --dataset lcq \
 --seed 2021 \
---test_data ../../../data/LC-QuAD/annotated_test.pkl \
---wo_vocab ../../../vocab/word_vocab_lcq.pkl \
---not_segment_embedding \
---not_matching_feature \
+--test_path ./data/LC-QuAD/annotated_test.pkl \
+--vocab_path ./vocab/word_vocab_lcq.pkl \
+--not_use_subgraph \
+--not_use_segment_embedding \
 --context_mode attention \
 --d_h 256 \
 --d_emb 300 \
---d_f 32 \
 --gpu $devices \
 --n_lstm_layers 1 \
 --n_gnn_blocks 3 \
 --heads 4 \
 --beam_size 7 \
---max_num_op 20 \
---alpha 0.2 \
---beta 0 \
---sparql_cache_path ../../../vocab/sparql_cache_lcq.pkl \
---cpt ./runs/lcq/1628590594/checkpoints/best_snapshot_epoch_79_val_aqg_acc_74.4_val_acc_16.4_model.pt \
---kb_endpoint http://10.201.61.163:8890//sparql
+--max_n_step 20 \
+--cpt_path $cpt_path \
+--result_path result.pkl \
+--kb_endpoint http://10.201.89.70:8890//sparql

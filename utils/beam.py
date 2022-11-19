@@ -1,3 +1,13 @@
+# -*- coding: utf-8 -*-
+# !/usr/bin/python
+
+"""
+# @Time    : 2021/8/30
+# @Author  : Yongrui Chen
+# @File    : beam.py
+# @Software: PyCharm
+"""
+
 from rules.grammar import AbstractQueryGraph
 
 

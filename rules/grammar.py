@@ -2,7 +2,7 @@
 # !/usr/bin/python
 
 """
-# @Time    : 2020/5/1
+# @Time    : 2021/8/31
 # @Author  : Yongrui Chen
 # @File    : grammar.py
 # @Software: PyCharm
@@ -11,16 +11,12 @@
 import re
 import sys
 import copy
-import json
-import torch
 import numpy as np
 import itertools
-from collections import deque, namedtuple
-
+from collections import namedtuple
 sys.path.append("..")
-from utils.query_interface import KB_query
 from utils.utils import get_inv_edge, formalize_time_constraint, expand_variable_in_filter, \
-    revert_period_constraint, revert_period_constraint_in_conds, \
+    revert_period_constraint, \
     date_pattern_0, date_pattern_1, date_pattern_2, date_pattern_3, \
     int_pattern, float_pattern, year_pattern, quotation_pattern, \
     is_entity, is_type, normalize_relation, tokenize_word_sentence, STOP_RELATIONS
@@ -321,14 +317,6 @@ class AbstractQueryGraph(HeterogeneousGraph):
         if v_labels1 != v_labels2:
             return False, False
 
-        # # check labels of edges
-        # e_labels1 = [self.e_labels[x] for x in self.edges]
-        # e_labels2 = [another_aqg.e_labels[x] for x in another_aqg.edges]
-        # e_labels1 = " ".join([str(x) for x in sorted(e_labels1)])
-        # e_labels2 = " ".join([str(x) for x in sorted(e_labels2)])
-        # if e_labels1 != e_labels2:
-        #     return False, False
-
         # check index of subgraph
         v_segments1 = [self.v_segments[x] for x in self.vertices]
         v_segments2 = [another_aqg.v_segments[x] for x in another_aqg.vertices]
@@ -417,15 +405,6 @@ class AbstractQueryGraph(HeterogeneousGraph):
                 if another_aqg.v_labels[v] not in [V_CLASS_IDS["ans"], V_CLASS_IDS["var"]]:
                     vertex_instances_labels2[vertex_idx2[v]] = another_aqg.v_instances[v][-1]
 
-            # print(vertex_idx2)
-            # print(vertex_labels1)
-            # print(vertex_labels2)
-            # print(vertex_segments_labels1)
-            # print(vertex_segments_labels2)
-            # print(vertex_instances_labels1)
-            # print(vertex_instances_labels2)
-            # print()
-
             # check class of vertex
             if " ".join([str(x) for x in vertex_labels1]) != " ".join([str(x) for x in vertex_labels2]):
                 continue
@@ -457,14 +436,6 @@ class AbstractQueryGraph(HeterogeneousGraph):
             adj_e_label_flat2 = " ".join([str(x) for x in adj_e_label_flat2])
             adj_e_instance_flat2 = " ".join([x for x in adj_e_instance_flat2])
 
-            # print(adj_e_label_flat1 == adj_e_label_flat2)
-            # print(adj1)
-            # print(adj2)
-            # print(adj_e_idx_flat1 == adj_e_idx_flat2)
-            # print(adj_e_instance_flat1)
-            # print(adj_e_instance_flat2)
-            # print()
-
             if adj_e_label_flat1 == adj_e_label_flat2:
                 structure_flag = True
                 if adj_e_instance_flat1 == adj_e_instance_flat2 \
@@ -492,14 +463,6 @@ class AbstractQueryGraph(HeterogeneousGraph):
         v_labels2 = " ".join([str(x) for x in sorted(v_labels2)])
         if v_labels1 != v_labels2:
             return False
-
-        # # check labels of edges
-        # e_labels1 = [self.e_labels[x] for x in self.edges]
-        # e_labels2 = [another_aqg.e_labels[x] for x in another_aqg.edges]
-        # e_labels1 = " ".join([str(x) for x in sorted(e_labels1)])
-        # e_labels2 = " ".join([str(x) for x in sorted(e_labels2)])
-        # if e_labels1 != e_labels2:
-        #     return False, False
 
         # check index of subgraph
         v_segments1 = [self.v_segments[x] for x in self.vertices]
@@ -555,15 +518,6 @@ class AbstractQueryGraph(HeterogeneousGraph):
                 vertex_labels2[vertex_idx2[v]] = another_aqg.v_labels[v]
                 vertex_segments_labels2[vertex_idx2[v]] = another_aqg.v_segments[v]
 
-            # print(vertex_idx2)
-            # print(vertex_labels1)
-            # print(vertex_labels2)
-            # print(vertex_segments_labels1)
-            # print(vertex_segments_labels2)
-            # print(vertex_instances_labels1)
-            # print(vertex_instances_labels2)
-            # print()
-
             # check class of vertex
             if " ".join([str(x) for x in vertex_labels1]) != " ".join([str(x) for x in vertex_labels2]):
                 continue
@@ -589,14 +543,6 @@ class AbstractQueryGraph(HeterogeneousGraph):
                     adj_e_label_flat2.append(str(another_aqg.e_labels[e]))
             adj_e_idx_flat2 = " ".join([str(x) for x in adj_e_idx_flat2])
             adj_e_label_flat2 = " ".join([str(x) for x in adj_e_label_flat2])
-
-            # print(adj_e_label_flat1 == adj_e_label_flat2)
-            # print(adj1)
-            # print(adj2)
-            # print(adj_e_idx_flat1 == adj_e_idx_flat2)
-            # print(adj_e_instance_flat1)
-            # print(adj_e_instance_flat2)
-            # print()
 
             if adj_e_label_flat1 == adj_e_label_flat2:
                 structure_flag = True
@@ -1135,12 +1081,6 @@ class AbstractQueryGraph(HeterogeneousGraph):
                     v_type = "xsd:float"
                 order_list.append(ord + "(" + v_type + "(" + v + "))\nLIMIT " + num)
 
-            # print(select_list)
-            # print(where_list)
-            # print(filter_list)
-            # print(filter_list_main)
-            # print(order_list)
-
             # Combine to the SPARQL string
             select_str = "SELECT DISTINCT " + select_list[-1] + "\n"     # Low-level selects are in the back
             where_str = "WHERE {\n" + "\n".join(where_list) + " " \
@@ -1262,7 +1202,6 @@ class AbstractQueryGraph(HeterogeneousGraph):
         return True
 
     def check_temporary_structure(self, dataset):
-
         has_var_or_type = False
         for v, v_class in self.v_labels.items():
             if v_class in [V_CLASS_IDS["type"], V_CLASS_IDS["var"]]:
@@ -1520,9 +1459,6 @@ def cal_edge_matching_total_score(dataset, aqg, e_instance_literal_score):
                 common = False
                 for _e_last_name in name_set:
                     _e_name_toks = tokenize_word_sentence(_e_last_name)
-                    # print(set(e_name_toks) & set(_e_name_toks))
-                    # print(set(e_name_toks) | set(_e_name_toks))
-                    # print()
                     if len(set(e_name_toks) & set(_e_name_toks)) >= len(set(e_name_toks) | set(_e_name_toks)) // 2:
                         common = True
                         break
@@ -1530,11 +1466,6 @@ def cal_edge_matching_total_score(dataset, aqg, e_instance_literal_score):
                     total_score += e_instance_literal_score[e_instance_name]
                     name_set.add(e_last_name)
 
-                # if e_last_name not in name_set:
-                #     total_score += e_instance_literal_score[e_instance_name]
-                #     name_set.add(e_last_name)
-        # if len(name_set) == len(aqg.edges) // 2 and total_score != 0:
-        #     total_score += 0.5
     return total_score
 
 def get_entity_true_name(ent_name, kb="freebase", kb_endpoint=None):

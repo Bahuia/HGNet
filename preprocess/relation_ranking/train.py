@@ -23,7 +23,7 @@ sys.path.append("../..")
 
 import pargs
 from data_loaders import RelationRankingDataLoader
-from models.ranking_model import RankingModel
+from models.model_ranker import RankingModel
 from utils.utils import cal_scores
 
 

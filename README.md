@@ -16,17 +16,17 @@ We apply three KGQA benchmarks to evaluate our approach, ComplexWebQuestions ([T
 
 
 ### Data
-* Download and unzip our preprocessed [data](https://1drv.ms/u/s!AjOOZxoN9FBQgQ5zAKdzO06ghJlP?e=vIsvzz) to `./`, you can also running our scripts under `./preprocess` to obtain them again.
+* Download and unzip our preprocessed [data](https://1drv.ms/u/s!AjOOZxoN9FBQgQ5zAKdzO06ghJlP?e=55zjJk) to `./`, you can also running our scripts under `./preprocess` to obtain them again.
 
 * Download GloVe Embedding [glove.42B.300d.txt](http://nlp.stanford.edu/data/glove.42B.300d.zip) and put it to `your_glove_path`.
 
-* Download our vocabulary from [here](https://1drv.ms/u/s!AjOOZxoN9FBQgQ-iIJMRDYgMeLpg?e=AOxfgs). Unzip and put it under `./`. It contains our used SPARQL cache for Execution-Guided strategy.
+* Download our vocabulary from [here](https://1drv.ms/u/s!AjOOZxoN9FBQgRDYhbh2oqsctjKS?e=mIFSdo). Unzip and put it under `./`. It contains our used SPARQL cache for Execution-Guided strategy.
 
 ### Virtuoso SPARQL Service
 
-Both of the KGs we used only contain English triples by removing other languages. 
-Download and install [Virtuoso](https://virtuoso.openlinksw.com) to conduct the SPARQL query service for the downloaded Freebase and DBpedia.
-You can also download our conducted Virtuoso SPARQL service [virtuoso-opensource](https://1drv.ms/u/s!AjOOZxoN9FBQgQ1VXpmcQ6XTb5aJ?e=6TLp78) and unzip it in another directory. [Here](https://joernhees.de/blog/2015/11/23/setting-up-a-linked-data-mirror-from-rdf-dumps-dbpedia-2015-04-freebase-wikidata-linkedgeodata-with-virtuoso-7-2-1-and-docker-optional/) is a tutorial on how to install Virtuoso and import the knowledge graph into it. 
+The two KGs we use contain only triples in English by removing other languages.
+Please download the KGs [virtuoso-opensource](https://1drv.ms/u/s!AjOOZxoN9FBQgRH2uV57RSk5OF6q?e=ZmfshZ) we use for the SPARQL query service for the downloaded Freebase and DBpedia.
+[Here](https://joernhees.de/blog/2015/11/23/setting-up-a-linked-data-mirror-from-rdf-dumps-dbpedia-2015-04-freebase-wikidata-linkedgeodata-with-virtuoso-7-2-1-and-docker-optional/) is a tutorial on how to install Virtuoso and import the knowledge graph into it. 
 
 1. Get root access
 2. Edit `virtuoso-opensource/database/virtuoso.ini` and set the property "DirsAllowed" to your path.
@@ -46,15 +46,15 @@ Before training, first set the following hyperparameter in `main_train_cwq.sh`, 
 
 Execute the following command for training model on ComplexWebQuestions.
 ```bash
-sh main_train_cwq.sh
+sh train_cwq.sh
 ```
 Execute the following command for training model on LC-QuAD.
 ```bash
-sh main_train_lcq.sh
+sh train_lcq.sh
 ```
 Execute the following command for training model on WebQSP.
 ```bash
-sh main_train_wsp.sh
+sh train_wsp.sh
 ```
 The trained model file is saved under `./runs` directory.  
 The path format of the trained model is `./runs/RUN_ID/checkpoints/best_snapshot_epoch_xx_best_val_acc_xx_model.pt`.
@@ -63,15 +63,15 @@ The path format of the trained model is `./runs/RUN_ID/checkpoints/best_snapshot
 
 Execute the following command for training model on ComplexWebQuestions.
 ```bash
-sh main_train_plm_cwq.sh
+sh train_plm_cwq.sh
 ```
 Execute the following command for training model on LC-QuAD.
 ```bash
-sh main_train_plm_lcq.sh
+sh train_plm_lcq.sh
 ```
 Execute the following command for training model on WebQSP.
 ```bash
-sh main_train_plm_wsp.sh
+sh train_plm_wsp.sh
 ```
 The trained model file is saved under `./runs` directory.  
 The path format of the trained model is `./runs/RUN_ID/checkpoints/best_snapshot_epoch_xx_best_val_acc_xx_model.pt`.
@@ -82,20 +82,20 @@ Before testing, need to train a model first and set the following hyperparameter
 --cpt your_trained_model_path
 --kb_endpoint your_sparql_service_ip
 ```
-You can also directly download our trained models from [here](https://1drv.ms/u/s!AjOOZxoN9FBQgQyGJE12dAGbjuYl?e=RTMUrs). Unzip and put it under `./`.
+You can also directly download our trained models from [here](https://1drv.ms/u/s!AjOOZxoN9FBQgRK8L4fz-TIbKew2?e=2Wh0oz). Unzip and put it under `./`.
 
 Execute the following command for testing the model on ComplexWebQuestions.
 ```bash
-sh main_eval_cwq.sh
+sh eval_cwq.sh
 ```
 Execute the following command for testing the model on 
 LC-QuAD.
 ```bash
-sh main_eval_lcq.sh
+sh eval_lcq.sh
 ```
 Execute the following command for testing the model on WebQSP.
 ```bash
-sh main_eval_wsp.sh
+sh eval_wsp.sh
 ```
 
 #### 4. Testing for HGNet with Bert-base
@@ -104,18 +104,18 @@ Before testing, need to train a model first and set the following hyperparameter
 --cpt your_trained_model_path
 --kb_endpoint your_sparql_service_ip
 ```
-You can also directly download our trained models from [here](https://1drv.ms/u/s!AjOOZxoN9FBQgQyGJE12dAGbjuYl?e=RTMUrs). Unzip and put it under `./`.
+You can also directly download our trained models from [here](https://1drv.ms/u/s!AjOOZxoN9FBQgRK8L4fz-TIbKew2?e=2Wh0oz). Unzip and put it under `./`.
 
 Execute the following command for testing the model on ComplexWebQuestions.
 ```bash
-sh main_eval_plm_cwq.sh
+sh eval_plm_cwq.sh
 ```
 Execute the following command for testing the model on 
 LC-QuAD.
 ```bash
-sh main_eval_plm_lcq.sh
+sh eval_plm_lcq.sh
 ```
 Execute the following command for testing the model on WebQSP.
 ```bash
-sh main_eval_plm_wsp.sh
+sh eval_plm_wsp.sh
 ```

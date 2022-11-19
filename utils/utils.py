@@ -151,6 +151,11 @@ def normalize_relation(relation):
         relation = relation.rstrip("s")
     return relation.lower()
 
+def normalize_query(sparql, kb):
+    if kb == "dbpedia":
+        sparql = sparql.replace("WHERE", "FROM <dbpedia> WHERE")
+    return sparql
+
 def combine_mapping(mapping1, mapping2, cover=False):
     for k, v in mapping2.items():
         if not cover:
@@ -477,7 +482,7 @@ def lemmatize_word(word):
         return [word[:-1]]
     return [word]
 
-def tokenize_word_sentence_bert(text, bert_tokenizer, start_cls=True):
+def tokenize_word_sentence_plm(text, bert_tokenizer, start_cls=True):
     text = text.lower()
     text = text.strip(" ").strip("?").strip(".").strip(" ")
     if start_cls:

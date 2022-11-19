@@ -255,11 +255,6 @@ class MultiHeadAttention(nn.Module):
         K = self.key_layer(keys)
         V = self.value_layer(keys)
 
-        # print(Q.size())
-        # print(K.size())
-        # print(V.size())
-        # print()
-
         l = Q.size(0)
 
         # split each Q, K and V into h different values from dim 2
@@ -272,20 +267,11 @@ class MultiHeadAttention(nn.Module):
         K = torch.cat(K.split(split_size=chunk_size, dim=2), dim=0)
         V = torch.cat(V.split(split_size=chunk_size, dim=2), dim=0)
 
-        # print(Q.size())
-        # print(K.transpose(1, 2).size())
-        # print(V.size())
-        # print()
-
         # calculate QK^T
         attention = torch.matmul(Q, K.transpose(1, 2))
         # normalize with sqrt(dk)
         # attention:    (n * _h, 1, n)
         attention = attention / torch.sqrt(self._key_dim).cuda()
-
-        # print(attention.size())
-        # print()
-
 
         if mask is not None:
           mask = mask.repeat(self._h,1,1)
@@ -296,8 +282,6 @@ class MultiHeadAttention(nn.Module):
         attention = self.dropout(attention)
         # multiplyt it with V
         attention = torch.matmul(attention, V)
-        # print(attention.size())
-        # print("---------------------------")
 
         # convert attention back to its input original size
         restore_chunk_size = int(attention.size(0) / self._h)
@@ -309,5 +293,4 @@ class MultiHeadAttention(nn.Module):
         #attention = self.bn(attention.transpose(1, 2)).transpose(1, 2)
         # apply layer normalization
         #attention = self.ln(attention)
-
         return attention
